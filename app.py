@@ -13,7 +13,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# --- 2. CSS DE ALTA PRECISÃO (LIMPEZA TOTAL) ---
+# --- 2. CSS DE ALTA PRECISÃO (LIMPEZA TOTAL & BLOQUEIOS) ---
 st.markdown("""
     <style>
         /* SCROLL SUAVE */
@@ -23,11 +23,13 @@ st.markdown("""
         .stApp { background-color: #0c120f; color: #e0e0e0; }
         * { font-family: 'Segoe UI', 'Roboto', sans-serif; }
         
-        /* Ocultar Menu Hambúrguer, Footer e BARRA DE FERRAMENTAS DA TABELA */
+        /* Ocultar Elementos do Streamlit */
         #MainMenu {visibility: hidden;}
         footer {visibility: hidden;}
         header {visibility: hidden;}
-        [data-testid="stElementToolbar"] { display: none !important; } /* Remove botões da tabela */
+        
+        /* Ocultar Barra de Ferramentas da Tabela (Download/Search/Fullscreen) */
+        [data-testid="stElementToolbar"] { display: none !important; }
         
         /* HEADER PRINCIPAL */
         .main-header {
@@ -76,7 +78,7 @@ st.markdown("""
         }
         .nav-card:hover .nav-title { color: #10b981 !important; }
 
-        /* --- CENTRALIZAÇÃO E REMOÇÃO DE SELEÇÃO --- */
+        /* --- TABELAS: VISUAL & COMPORTAMENTO --- */
         
         div[data-testid="stDataFrame"] {
             border: 1px solid #1f2937;
@@ -84,6 +86,7 @@ st.markdown("""
             background-color: #0c120f;
         }
         
+        /* Cabeçalho */
         div[data-testid="stDataFrame"] div[role="columnheader"] {
             background-color: #141f1b;
             color: #6ee7b7;
@@ -96,19 +99,35 @@ st.markdown("""
             display: flex;
         }
         
-        /* Célula Centralizada e SEM BORDA DE SELEÇÃO AO CLICAR */
+        /* Células: Centralizadas e SEM SELEÇÃO */
         div[data-testid="stDataFrame"] div[role="gridcell"] {
             display: flex;
             justify-content: center !important;
             align-items: center !important;
             background-color: #0c120f;
-            outline: none !important; /* Remove borda azul ao clicar */
+            /* Remove efeitos de clique/foco */
+            outline: none !important;
             box-shadow: none !important;
-        }
-        div[data-testid="stDataFrame"] div[role="gridcell"]:focus {
-            background-color: #0c120f !important; /* Remove fundo cinza ao clicar */
+            border: none !important;
         }
         
+        /* Remove o fundo cinza quando clica na célula */
+        div[data-testid="stDataFrame"] div[role="gridcell"]:focus,
+        div[data-testid="stDataFrame"] div[role="gridcell"]:active {
+            background-color: #0c120f !important;
+            color: inherit !important;
+        }
+
+        /* Garante que o conteúdo dentro da célula também alinhe */
+        div[data-testid="stDataFrame"] div[role="gridcell"] > div {
+            display: flex;
+            justify-content: center !important;
+            align-items: center !important;
+            text-align: center !important;
+            width: 100%;
+        }
+        
+        /* Logos */
         div[data-testid="stDataFrame"] div[role="gridcell"] img {
             border-radius: 50%;
             border: 1px solid #374151;
@@ -311,19 +330,18 @@ st.markdown("""
 def show_mini_table(col, title, df):
     col.write(f"**{title}**")
     if not df.empty:
-        # Lógica para tratar IFIX ou ativos sem dados (0.0)
-        def format_prices(val):
+        # Lógica para IFIX e zeros
+        def format_price(val):
             if val == 0: return "-"
             return "{:.2f}".format(val)
 
         def color_var(val):
             if val > 0: return 'color: #34d399; font-weight: bold;'
             if val < 0: return 'color: #f87171; font-weight: bold;'
-            if val == 0: return 'color: #6b7280;' # Cor neutra para 0
             return 'color: #6b7280;'
             
         styled_df = df.style.format({ 
-            "Preço": format_prices, 
+            "Preço": format_price, 
             "Var%": "{:+.2f}%" 
         }).map(color_var, subset=['Var%'])
         
@@ -331,7 +349,7 @@ def show_mini_table(col, title, df):
             styled_df,
             column_config={
                 "Ativo": st.column_config.TextColumn("Ativo"),
-                "Preço": st.column_config.TextColumn("Cotação"), # TextColumn aceita formatação customizada melhor
+                "Preço": st.column_config.TextColumn("Cotação"),
                 "Var%": st.column_config.TextColumn("Var %")
             },
             hide_index=True,
@@ -350,9 +368,8 @@ with r2c1: show_mini_table(r2c1, "🛢️ Commodities", M['COMMODITIES'])
 with r2c2: show_mini_table(r2c2, "💎 Criptoativos", M['CRIPTO'])
 
 
-# --- CARGA DADOS ---
+# --- CARGA DADOS (AUTO) ---
 df_radar, df_div = pd.DataFrame(), pd.DataFrame()
-# Leitura automática
 if os.path.exists("PEC.xlsx"): file_data = pd.ExcelFile("PEC.xlsx")
 elif os.path.exists("PEC - Página1.csv"): file_data = pd.read_csv("PEC - Página1.csv")
 else: file_data = None
@@ -412,14 +429,14 @@ st.markdown(f"""
 
 if not df_radar.empty:
     # SEARCH
-    search_term = st.text_input("🔍 Pesquisar Ativo (Bazin)", placeholder="Ex: BBAS3, Banco...", key="search_bazin")
+    search_bazin = st.text_input("🔍 Pesquisar Ativo (Bazin)", placeholder="Ex: BB Seguridade", key="sbazin")
     
     # FILTER
     df_show = df_radar.copy()
-    if search_term:
+    if search_bazin:
         df_show = df_show[
-            df_show['Ativo'].str.contains(search_term, case=False) | 
-            df_show['TICKER_F'].str.contains(search_term, case=False)
+            df_show['Ativo'].str.contains(search_bazin, case=False) | 
+            df_show['TICKER_F'].str.contains(search_bazin, case=False)
         ]
 
     def style_margin(v):
@@ -436,7 +453,7 @@ if not df_radar.empty:
         column_config={
             "Logo": st.column_config.ImageColumn(""),
             "Ativo": st.column_config.TextColumn("Ativo"),
-            "TICKER_F": None, # Oculta ticker duplicado
+            "TICKER_F": None,
             "BAZIN_F": st.column_config.NumberColumn("Preço Teto"),
             "PRECO_F": st.column_config.NumberColumn("Cotação"),
             "MARGEM_VAL": st.column_config.TextColumn("Margem"),
@@ -463,7 +480,7 @@ st.markdown(f"""
 
 if not df_div.empty:
     # SEARCH
-    search_div = st.text_input("🔍 Pesquisar Ativo (Dividendos)", placeholder="Ex: TAEE11...", key="search_div")
+    search_div = st.text_input("🔍 Pesquisar Ativo (Dividendos)", placeholder="Ex: BB Seguridade", key="sdiv")
     
     # FILTER
     df_div_show = df_div.copy()
