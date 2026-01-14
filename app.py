@@ -9,33 +9,52 @@ st.set_page_config(
     page_title="Dinheiro Data",
     page_icon="🦅",
     layout="wide",
-    initial_sidebar_state="collapsed" # Menu recolhido para focar no conteúdo
+    initial_sidebar_state="collapsed"
 )
 
-# --- 2. CSS PREMIUM (UI/UX ESTILO BLOOMBERG) ---
+# --- 2. CSS PREMIUM (UX CENTRALIZADO E NAVEGAÇÃO) ---
 st.markdown("""
     <style>
         /* Fundo e Fonte */
-        .stApp { background-color: #0e1117; color: #e0e0e0; }
+        .stApp { background-color: #0e1117; color: #e0e0e0; scroll-behavior: smooth; }
         * { font-family: 'Segoe UI', 'Roboto', sans-serif; }
         
-        /* Remove padding excessivo do topo */
-        .block-container { padding-top: 2rem; padding-bottom: 5rem; }
+        /* HEADER DE NAVEGAÇÃO (BOTÕES) */
+        .nav-card {
+            background-color: #1f2937;
+            border: 1px solid #374151;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            color: white;
+            display: block;
+            margin-bottom: 20px;
+        }
+        .nav-card:hover {
+            background-color: #374151;
+            border-color: #60a5fa;
+            transform: translateY(-2px);
+        }
+        .nav-title { font-weight: bold; font-size: 1.1rem; display: block; }
+        .nav-desc { font-size: 0.8rem; color: #9ca3af; display: block; margin-top: 5px;}
 
-        /* HEADER DAS TABELAS (Centralizado) */
+        /* TABELAS - CENTRALIZAÇÃO TOTAL */
         div[data-testid="stDataFrame"] div[role="columnheader"] {
             background-color: #111827;
             color: #9ca3af;
             font-size: 13px;
             font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
             border-bottom: 2px solid #374151;
             text-align: center !important;
             justify-content: center !important;
+            display: flex;
         }
 
-        /* CÉLULAS DAS TABELAS (Centralizadas) */
+        /* CÉLULAS - CENTRALIZAÇÃO TOTAL */
         div[data-testid="stDataFrame"] div[role="gridcell"] {
             display: flex;
             justify-content: center !important;
@@ -43,42 +62,48 @@ st.markdown("""
             text-align: center !important;
             font-size: 14px;
             font-weight: 500;
+            height: 100%;
         }
-
-        /* LOGOS CIRCULARES */
+        
+        /* LOGOS CIRCULARES NO MEIO */
         div[data-testid="stDataFrame"] div[role="gridcell"] img {
             border-radius: 50%;
             object-fit: cover;
             border: 1px solid #4b5563;
             padding: 2px;
             background-color: white;
-            width: 30px;
-            height: 30px;
+            width: 32px;
+            height: 32px;
+            display: block;
+            margin: 0 auto; /* Garante centro */
         }
 
-        /* TÍTULOS DE SEÇÃO */
+        /* TÍTULOS DE SEÇÃO COM ÂNCORA */
         .section-header {
-            font-size: 1.4rem;
+            font-size: 1.5rem;
             font-weight: 700;
             color: #f3f4f6;
-            margin-top: 30px;
-            margin-bottom: 15px;
-            border-left: 5px solid #3b82f6; /* Barra Azul */
+            margin-top: 40px;
+            margin-bottom: 20px;
+            border-left: 5px solid #3b82f6;
             padding-left: 15px;
             background: linear-gradient(90deg, #1f2937 0%, transparent 100%);
-            padding-top: 5px;
-            padding-bottom: 5px;
+            padding-top: 8px;
+            padding-bottom: 8px;
             border-radius: 0 8px 8px 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
         }
         
-        /* SAUDAÇÃO */
-        .greeting-card {
-            text-align: center;
-            padding: 20px;
-            background: #1f2937;
-            border-radius: 12px;
-            border: 1px solid #374151;
-            margin-bottom: 20px;
+        .kpi-badge {
+            background-color: #064e3b;
+            color: #4ade80;
+            font-size: 0.9rem;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-weight: 600;
+            border: 1px solid #059669;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -105,7 +130,6 @@ def clean_dy_percentage(x):
     return val
 
 def get_logo_url(ticker):
-    """Busca Logo via Site Oficial (Coluna A)"""
     if not isinstance(ticker, str): return ""
     clean = ticker.replace('.SA', '').strip().upper()
     
@@ -132,31 +156,14 @@ def get_logo_url(ticker):
 
 @st.cache_data(ttl=60)
 def get_market_data_distributed():
-    """
-    5 PILARES DE MERCADO
-    """
     groups = {
-        'USA': {
-            'S&P 500': '^GSPC', 'NASDAQ': '^IXIC', 'DOW JONES': '^DJI', 'VIX (Medo)': '^VIX'
-        },
-        'BRASIL': {
-            'IBOVESPA': '^BVSP', 'IFIX (FIIs)': 'IFIX.SA', 
-            'VALE': 'VALE3.SA', 'PETROBRAS': 'PETR4.SA', 'ITAU': 'ITUB4.SA', 'BB': 'BBAS3.SA'
-        },
-        'MOEDAS': {
-            'DÓLAR': 'BRL=X', 'EURO': 'EURBRL=X', 'DXY (Global)': 'DX-Y.NYB', 'LIBRA': 'GBPBRL=X'
-        },
-        'COMMODITIES': {
-            'OURO': 'GC=F', 'PRATA': 'SI=F', 'COBRE': 'HG=F', # Sequencia solicitada
-            'BRENT OIL': 'BZ=F', 'GÁS NAT.': 'NG=F', 'SOJA': 'ZS=F'
-        },
-        'CRIPTO': {
-            'BITCOIN': 'BTC-USD', 'ETHEREUM': 'ETH-USD', 'SOLANA': 'SOL-USD', 'BNB': 'BNB-USD'
-        }
+        'USA': { 'S&P 500': '^GSPC', 'NASDAQ': '^IXIC', 'DOW JONES': '^DJI', 'VIX (Medo)': '^VIX' },
+        'BRASIL': { 'IBOVESPA': '^BVSP', 'IFIX (FIIs)': 'IFIX.SA', 'VALE': 'VALE3.SA', 'PETROBRAS': 'PETR4.SA' },
+        'MOEDAS': { 'DÓLAR': 'BRL=X', 'EURO': 'EURBRL=X', 'DXY Global': 'DX-Y.NYB', 'LIBRA': 'GBPBRL=X' },
+        'COMMODITIES': { 'OURO': 'GC=F', 'PRATA': 'SI=F', 'COBRE': 'HG=F', 'PETRÓLEO': 'BZ=F' },
+        'CRIPTO': { 'BITCOIN': 'BTC-USD', 'ETHEREUM': 'ETH-USD', 'SOLANA': 'SOL-USD', 'BNB': 'BNB-USD' }
     }
-    
     final_dfs = {}
-    
     for cat, items in groups.items():
         rows = []
         try:
@@ -170,15 +177,12 @@ def get_market_data_distributed():
                         delta = curr - prev
                         pct = (delta / prev) * 100
                         rows.append([name, curr, pct])
-                    else:
-                        rows.append([name, 0.0, 0.0])
+                    else: rows.append([name, 0.0, 0.0])
                 except: rows.append([name, 0.0, 0.0])
         except: pass
-        
-        # DataFrame (Sem Var R$, apenas %)
-        df = pd.DataFrame(rows, columns=["Ativo", "Preço", "Var%"])
-        final_dfs[cat] = df
-        
+        # Garante 4 linhas fixas para simetria perfeita
+        while len(rows) < 4: rows.append(["-", 0.0, 0.0])
+        final_dfs[cat] = pd.DataFrame(rows[:4], columns=["Ativo", "Preço", "Var%"])
     return final_dfs
 
 @st.cache_data(ttl=300)
@@ -196,59 +200,71 @@ def get_br_prices(ticker_list):
 
 # --- 4. APP LAYOUT ---
 
-# Saudação
-st.markdown(f"""
-    <div class='greeting-card'>
-        <h1 style='margin:0; font-size: 2rem;'>🦅 {get_greeting()}, Investidor</h1>
-        <p style='color: #9ca3af; margin-top: 5px;'>Sua central de inteligência financeira em tempo real.</p>
-    </div>
-""", unsafe_allow_html=True)
+# Topo: Saudação
+st.markdown(f"<h2 style='text-align: center; color: white; margin-bottom: 30px;'>🦅 {get_greeting()}, Investidor</h2>", unsafe_allow_html=True)
 
-# Carregamento de Dados
+# NAVEGAÇÃO (BOTÕES CLICÁVEIS)
+# Usamos HTML anchors para navegar na mesma página
+nav1, nav2, nav3 = st.columns(3)
+with nav1:
+    st.markdown("""<a href='#panorama' class='nav-card'>
+        <span class='nav-title'>🌍 Panorama</span>
+        <span class='nav-desc'>Mercado Global em Tempo Real</span>
+    </a>""", unsafe_allow_html=True)
+with nav2:
+    st.markdown("""<a href='#radar-bazin' class='nav-card'>
+        <span class='nav-title'>🎯 Radar Bazin</span>
+        <span class='nav-desc'>Preço Teto e Margem</span>
+    </a>""", unsafe_allow_html=True)
+with nav3:
+    st.markdown("""<a href='#dividendos' class='nav-card'>
+        <span class='nav-title'>💰 Dividendos</span>
+        <span class='nav-desc'>Yield Projetado 2026</span>
+    </a>""", unsafe_allow_html=True)
+
 M = get_market_data_distributed()
 
-# --- SEÇÃO 1: PANORAMA (5 COLUNAS DISTRIBUÍDAS) ---
+# --- ANCHOR: PANORAMA ---
+st.markdown("<div id='panorama'></div>", unsafe_allow_html=True)
 st.markdown("<div class='section-header'>🌍 Panorama de Mercado</div>", unsafe_allow_html=True)
 
-# Estilo para as tabelas de mercado (Verde/Vermelho na porcentagem)
 def show_mini_table(col, title, df):
     col.write(f"**{title}**")
     if not df.empty:
+        # APENAS VERDE OU VERMELHO
         def color_var(val):
             color = '#4ade80' if val > 0 else '#f87171' if val < 0 else '#6b7280'
             return f'color: {color}; font-weight: bold;'
 
-        styled_df = df.style.format({
-            "Preço": "{:.2f}",
-            "Var%": "{:+.2f}%"
-        }).map(color_var, subset=['Var%'])
+        styled_df = df.style.format({ "Preço": "{:.2f}", "Var%": "{:+.2f}%" }).map(color_var, subset=['Var%'])
         
         col.dataframe(
             styled_df,
             column_config={
-                "Ativo": st.column_config.TextColumn("Ativo"), # Width auto
-                "Preço": st.column_config.NumberColumn("Cotação"), # Width auto
-                "Var%": st.column_config.TextColumn("Var %") # Width auto
+                "Ativo": st.column_config.TextColumn("Ativo"),
+                "Preço": st.column_config.NumberColumn("Cotação"),
+                "Var%": st.column_config.TextColumn("Var %")
             },
             hide_index=True,
             use_container_width=True
         )
 
-# Layout: 3 Colunas em Cima, 2 Em Baixo (Para melhor leitura)
+# Layout Panorama (Simétrico)
 row1_1, row1_2, row1_3 = st.columns(3)
 with row1_1: show_mini_table(row1_1, "🇺🇸 Índices EUA", M['USA'])
-with row1_2: show_mini_table(row1_2, "🇧🇷 Índices Brasil", M['BRASIL'])
-with row1_3: show_mini_table(row1_3, "💱 Moedas Fortes", M['MOEDAS'])
+with row1_2: show_mini_table(row1_2, "🇧🇷 Brasil", M['BRASIL'])
+with row1_3: show_mini_table(row1_3, "💱 Moedas", M['MOEDAS'])
 
-st.write("") # Espaçamento
+st.write("") 
 
-row2_1, row2_2 = st.columns(2)
+row2_1, row2_2 = st.columns([1,1]) # Centralizado em 2 colunas
 with row2_1: show_mini_table(row2_1, "🛢️ Commodities", M['COMMODITIES'])
 with row2_2: show_mini_table(row2_2, "💎 Criptoativos", M['CRIPTO'])
 
-# --- PROCESSAMENTO EXCEL ---
+
+# --- LÓGICA DE DADOS ---
 df_radar, df_div = pd.DataFrame(), pd.DataFrame()
-uploaded = st.sidebar.file_uploader("📂 Atualizar Planilha", type=['xlsx', 'csv'])
+uploaded = st.sidebar.file_uploader("📂 Carregar Dados", type=['xlsx', 'csv'])
 file_data = None
 
 if uploaded: file_data = pd.read_csv(uploaded) if uploaded.name.endswith('.csv') else pd.ExcelFile(uploaded)
@@ -283,7 +299,6 @@ if file_data is not None:
                 
                 prices = get_br_prices(target_df['TICKER_F'].unique().tolist())
                 target_df['PRECO_F'] = target_df['TICKER_F'].map(prices).fillna(0)
-                
                 target_df['MARGEM_VAL'] = target_df.apply(lambda x: ((x['BAZIN_F'] - x['PRECO_F']) / x['PRECO_F'] * 100) if x['PRECO_F'] > 0 else -999, axis=1)
                 target_df['Logo'] = target_df['TICKER_F'].apply(get_logo_url)
                 target_df['Ativo'] = target_df[c_emp] if c_emp else target_df['TICKER_F']
@@ -292,15 +307,25 @@ if file_data is not None:
                 df_div = target_df[target_df['DY_F'] > 0][['Logo', 'Ativo', 'DPA_F', 'DY_F']].sort_values('DY_F', ascending=False)
     except: pass
 
-# --- SEÇÃO 2: RADAR BAZIN ---
-st.markdown("<div class='section-header'>🎯 Radar de Preço Justo (Bazin)</div>", unsafe_allow_html=True)
+# --- ANCHOR: RADAR BAZIN ---
+st.markdown("<div id='radar-bazin'></div>", unsafe_allow_html=True)
+
+# KPI Count
+count_opp = len(df_radar[df_radar['MARGEM_VAL'] > 10]) if not df_radar.empty else 0
+html_header_bazin = f"""
+<div class='section-header'>
+    <span>🎯 Radar Preço Teto</span>
+    <span class='kpi-badge'>{count_opp} Oportunidades (>10%)</span>
+</div>
+"""
+st.markdown(html_header_bazin, unsafe_allow_html=True)
 
 if not df_radar.empty:
-    # Função de Estilo da Margem (Fundo Colorido Suave)
+    # CORES RÍGIDAS: Verde (>10), Vermelho (<0), Cinza (Resto)
     def style_margin(v):
-        if v > 10: return 'background-color: #064e3b; color: #4ade80; font-weight: bold;'
-        if v > 0: return 'background-color: #422006; color: #facc15; font-weight: bold;'
-        return 'background-color: #450a0a; color: #f87171; font-weight: bold;'
+        if v > 10: return 'color: #4ade80; font-weight: bold;' # Verde Forte
+        if v < 0: return 'color: #f87171; font-weight: bold;' # Vermelho
+        return 'color: #9ca3af;' # Cinza Neutro
 
     styled_radar = df_radar.style.format({
         "BAZIN_F": "R$ {:.2f}", "PRECO_F": "R$ {:.2f}", "MARGEM_VAL": "{:+.1f}%"
@@ -309,7 +334,7 @@ if not df_radar.empty:
     st.dataframe(
         styled_radar,
         column_config={
-            "Logo": st.column_config.ImageColumn(""), # Logo sem nome
+            "Logo": st.column_config.ImageColumn("", width="small"),
             "Ativo": st.column_config.TextColumn("Ativo"),
             "BAZIN_F": st.column_config.NumberColumn("Preço Teto"),
             "PRECO_F": st.column_config.NumberColumn("Cotação"),
@@ -318,15 +343,25 @@ if not df_radar.empty:
         hide_index=True,
         use_container_width=True
     )
-else:
-    st.info("Carregando inteligência de dados...")
 
-# --- SEÇÃO 3: DIVIDENDOS ---
-st.markdown("<div class='section-header'>💰 Projeção de Renda Passiva</div>", unsafe_allow_html=True)
+# --- ANCHOR: DIVIDENDOS ---
+st.markdown("<div id='dividendos'></div>", unsafe_allow_html=True)
+
+# KPI Count
+count_dy = len(df_div[df_div['DY_F'] > 8]) if not df_div.empty else 0
+html_header_div = f"""
+<div class='section-header'>
+    <span>💰 Projeção Dividendos</span>
+    <span class='kpi-badge'>{count_dy} Ativos Pagadores (>8%)</span>
+</div>
+"""
+st.markdown(html_header_div, unsafe_allow_html=True)
 
 if not df_div.empty:
+    # CORES RÍGIDAS: Verde (>8), Cinza (Resto)
     def style_dy(v):
-        return 'background-color: #064e3b; color: #4ade80; font-weight: bold;' if v > 6 else ''
+        if v > 8: return 'color: #4ade80; font-weight: bold;'
+        return 'color: #9ca3af;'
 
     styled_div = df_div.style.format({
         "DPA_F": "R$ {:.2f}", "DY_F": "{:.2f}%"
@@ -335,10 +370,10 @@ if not df_div.empty:
     st.dataframe(
         styled_div,
         column_config={
-            "Logo": st.column_config.ImageColumn(""),
+            "Logo": st.column_config.ImageColumn("", width="small"),
             "Ativo": st.column_config.TextColumn("Ativo"),
             "DPA_F": st.column_config.NumberColumn("Div. / Ação"),
-            "DY_F": st.column_config.TextColumn("Yield Projetado"),
+            "DY_F": st.column_config.TextColumn("Yield 2026"),
         },
         hide_index=True,
         use_container_width=True
