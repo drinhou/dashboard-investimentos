@@ -53,7 +53,7 @@ st.markdown("""
             text-align: center; 
         }
         
-        /* Células Centralizadas (Hack CSS Flexbox) */
+        /* Células Centralizadas */
         div[data-testid="stDataFrame"] div[role="gridcell"] {
             display: flex;
             justify-content: center;
@@ -68,7 +68,6 @@ st.markdown("""
 # --- 3. FUNÇÕES DE TRATAMENTO ---
 
 def clean_currency(x):
-    """Limpa formatação financeira"""
     if isinstance(x, (int, float)): return float(x)
     if isinstance(x, str):
         clean = x.replace('R$', '').replace('.', '').replace(',', '.').replace('%', '').strip()
@@ -77,54 +76,34 @@ def clean_currency(x):
     return 0.0
 
 def clean_dy_percentage(x):
-    """Corrige DY decimal (0.11 -> 11.0%)"""
     val = clean_currency(x)
-    if val > 0 and val < 1.0:
-        return val * 100
+    if val > 0 and val < 1.0: return val * 100
     return val
 
-def get_logo_url(ticker):
+def get_logo_url(ticker, custom_site=None):
     """
-    ESTRATÉGIA INFALÍVEL:
-    Usa o serviço de Favicon do Google baseado no site oficial da empresa.
+    PRIORIDADE TOTAL: Coluna A do Excel (custom_site)
     """
-    if not isinstance(ticker, str): return ""
-    clean = ticker.replace('.SA', '').strip().upper()
+    clean_ticker = str(ticker).replace('.SA', '').strip().upper()
+
+    # 1. TENTA USAR O SITE DA PLANILHA (COLUNA A)
+    if custom_site and isinstance(custom_site, str) and len(custom_site) > 3:
+        # Limpa o link para pegar só o domínio (ex: https://www.bb.com.br -> bb.com.br)
+        domain = custom_site.replace("https://", "").replace("http://", "").replace("www.", "").split("/")[0]
+        return f"https://www.google.com/s2/favicons?domain={domain}&sz=128"
+
+    # 2. SE NÃO TIVER SITE NA PLANILHA, TENTA MAPA MANUAL OU CRIPTO
     
-    # Mapeamento Manual (Ticker -> Site Oficial)
-    domain_map = {
-        'BBAS3': 'bb.com.br', 'BBSE3': 'bbseguridaderi.com.br',
-        'ITUB4': 'itau.com.br', 'BBDC4': 'bradesco.com.br',
-        'SANB11': 'santander.com.br', 'PETR4': 'petrobras.com.br',
-        'VALE3': 'vale.com', 'WEGE3': 'weg.net',
-        'CMIG4': 'cemig.com.br', 'SAPR4': 'sanepar.com.br', 'SAPR11': 'sanepar.com.br',
-        'ISAE4': 'isacteep.com.br', 'TRPL4': 'isacteep.com.br',
-        'CXSE3': 'caixaseguridade.com.br', 'ODPV3': 'odontoprev.com.br',
-        'TAEE11': 'taesa.com.br', 'KLBN11': 'klabin.com.br',
-        'SUZB3': 'suzano.com.br', 'JBSS3': 'jbs.com.br',
-        'ABEV3': 'ambev.com.br', 'EGIE3': 'engie.com.br',
-        'VIVT3': 'vivo.com.br', 'TIMS3': 'tim.com.br',
-        'B3SA3': 'b3.com.br', 'XP': 'xp.com.br', 'NU': 'nubank.com.br',
-        'MXRF11': 'xp.com.br', 'HGLG11': 'cshg.com.br',
-        'KNCA11': 'kinea.com.br', 'KNIP11': 'kinea.com.br',
-        'XPLG11': 'xp.com.br', 'VISC11': 'vinci-partners.com'
-    }
-
     # Cripto (CoinGecko)
-    if clean in ['BTC', 'BITCOIN']: return "https://assets.coingecko.com/coins/images/1/small/bitcoin.png"
-    if clean in ['ETH', 'ETHEREUM']: return "https://assets.coingecko.com/coins/images/279/small/ethereum.png"
-    if clean in ['SOL', 'SOLANA']: return "https://assets.coingecko.com/coins/images/4128/small/solana.png"
+    if clean_ticker in ['BTC', 'BITCOIN']: return "https://assets.coingecko.com/coins/images/1/small/bitcoin.png"
+    if clean_ticker in ['ETH', 'ETHEREUM']: return "https://assets.coingecko.com/coins/images/279/small/ethereum.png"
+    if clean_ticker in ['SOL', 'SOLANA']: return "https://assets.coingecko.com/coins/images/4128/small/solana.png"
 
-    # Se estiver no mapa, usa o Google Favicon
-    if clean in domain_map:
-        return f"https://www.google.com/s2/favicons?domain={domain_map[clean]}&sz=128"
-
-    # Fallback: Repositório genérico
-    return f"https://cdn.jsdelivr.net/gh/thefintz/icon-project@master/stock_logos/{clean}.png"
+    # Fallback genérico (Só se a coluna A estiver vazia)
+    return f"https://cdn.jsdelivr.net/gh/thefintz/icon-project@master/stock_logos/{clean_ticker}.png"
 
 @st.cache_data(ttl=60)
 def get_full_market_data():
-    """Retorna 3 listas com EXATAMENTE 6 itens cada."""
     lists = {
         'INDICES_MOEDAS': {
             'IBOVESPA': '^BVSP', 'IFIX (FIIs)': 'IFIX.SA',
@@ -237,7 +216,6 @@ df_div = pd.DataFrame()
 
 if file_data is not None:
     try:
-        # Se for ExcelFile, procura aba. Se for DataFrame, já é dados.
         if isinstance(file_data, pd.ExcelFile):
             target_df = pd.DataFrame()
             for sheet in file_data.sheet_names:
@@ -250,10 +228,16 @@ if file_data is not None:
             target_df = file_data
 
         if not target_df.empty:
+            # NORMALIZA COLUNAS
             target_df.columns = [str(c).strip().upper() for c in target_df.columns]
             cols = target_df.columns
             
-            # Mapeamento
+            # --- PEGA A COLUNA A (SITE) ---
+            # Assume que a primeira coluna (índice 0) é a que tem o site, conforme sua instrução
+            col_site_data = target_df.iloc[:, 0].astype(str)
+            target_df['SITE_F'] = col_site_data
+
+            # Mapeamento das outras colunas
             col_ticker = next((c for c in cols if 'TICKER' in c), None)
             col_empresa = next((c for c in cols if 'EMPRESA' in c), None)
             col_bazin = next((c for c in cols if 'BAZIN' in c), None)
@@ -264,11 +248,9 @@ if file_data is not None:
                 target_df['TICKER_F'] = target_df[col_ticker].astype(str).str.strip().str.upper()
                 target_df['BAZIN_F'] = target_df[col_bazin].apply(clean_currency)
                 
-                # DY CORRIGIDO
                 if col_dy: target_df['DY_F'] = target_df[col_dy].apply(clean_dy_percentage)
                 else: target_df['DY_F'] = 0.0
                 
-                # DPA
                 if col_dpa: target_df['DPA_F'] = target_df[col_dpa].apply(clean_currency)
                 else: target_df['DPA_F'] = 0.0
                 
@@ -281,7 +263,10 @@ if file_data is not None:
                     axis=1
                 )
                 
-                target_df['LOGO_F'] = target_df['TICKER_F'].apply(get_logo_url)
+                # --- AQUI ESTÁ A MÁGICA ---
+                # Passa o Ticker E o Site da Coluna A para a função
+                target_df['LOGO_F'] = target_df.apply(lambda x: get_logo_url(x['TICKER_F'], x['SITE_F']), axis=1)
+                
                 target_df['NOME_F'] = target_df[col_empresa] if col_empresa else target_df['TICKER_F']
 
                 df_radar = target_df[target_df['BAZIN_F'] > 0].copy()
