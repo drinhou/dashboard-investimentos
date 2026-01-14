@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import yfinance as yf
 import os
-import re # Importante para ler a fórmula do Excel
 
 # --- 1. CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(
@@ -82,42 +81,46 @@ def clean_dy_percentage(x):
     if val > 0 and val < 1.0: return val * 100
     return val
 
-def extract_url_from_formula(cell_content):
+def get_logo_url(ticker):
     """
-    MÁGICA: Extrai o link de dentro de =IMAGE("https://...")
+    Usa a lista de domínios fornecida pelo usuário para buscar o Favicon no Google.
     """
-    if not isinstance(cell_content, str): return ""
+    if not isinstance(ticker, str): return ""
+    clean = ticker.replace('.SA', '').strip().upper()
     
-    # 1. Se já for um link normal, retorna ele
-    if cell_content.startswith("http") and "IMAGE" not in cell_content:
-        return cell_content
-    
-    # 2. Se for fórmula =IMAGE("link"), usa Regex para pegar o link
-    # Procura por http... até encontrar aspas ou parênteses
-    match = re.search(r'(https?://[^\s"\'\)]+)', cell_content)
-    if match:
-        return match.group(1)
-        
-    return ""
+    # --- SUA LISTA DE DOMÍNIOS (HARDCODED PARA NÃO FALHAR) ---
+    meus_sites = {
+        'CXSE3': 'caixaseguradora.com.br',
+        'BBSE3': 'bbseguros.com.br',
+        'ODPV3': 'odontoprev.com.br',
+        'BBAS3': 'bb.com.br',
+        'ABCB4': 'abcbrasil.com.br',
+        'ITUB4': 'itau.com.br',
+        'ISAE4': 'isaenergiabrasil.com.br',
+        'TRPL4': 'isaenergiabrasil.com.br', # Caso antigo
+        'CMIG4': 'cemig.com.br',
+        'SAPR4': 'sanepar.com.br',
+        'SAPR11': 'sanepar.com.br',
+        'PETR4': 'petrobras.com.br',
+        'RANI3': 'irani.com.br',
+        'KLBN11': 'klabin.com.br', # Klabin tem vários, esse é seguro
+        'KLBN4': 'klabin.com.br',
+        'IRBR3': 'irbre.com',
+        'FLRY3': 'fleury.com.br',
+        'PSSA3': 'portoseguro.com.br'
+    }
 
-def get_logo_url(ticker, custom_site=None):
-    """
-    Prioridade: Link extraído da Coluna A (Fórmula Excel)
-    """
-    clean_ticker = str(ticker).replace('.SA', '').strip().upper()
+    # 1. Se estiver na sua lista VIP, usa o Google Favicon (Alta qualidade)
+    if clean in meus_sites:
+        return f"https://www.google.com/s2/favicons?domain={meus_sites[clean]}&sz=128"
 
-    # 1. TENTA EXTRAIR DA FÓRMULA EXCEL (Coluna A)
-    if custom_site:
-        url_excel = extract_url_from_formula(str(custom_site))
-        if url_excel:
-            return url_excel
+    # 2. Cripto (CoinGecko)
+    if clean in ['BTC', 'BITCOIN']: return "https://assets.coingecko.com/coins/images/1/small/bitcoin.png"
+    if clean in ['ETH', 'ETHEREUM']: return "https://assets.coingecko.com/coins/images/279/small/ethereum.png"
+    if clean in ['SOL', 'SOLANA']: return "https://assets.coingecko.com/coins/images/4128/small/solana.png"
 
-    # 2. FALLBACK (Se não tiver nada na Coluna A)
-    if clean_ticker in ['BTC', 'BITCOIN']: return "https://assets.coingecko.com/coins/images/1/small/bitcoin.png"
-    if clean_ticker in ['ETH', 'ETHEREUM']: return "https://assets.coingecko.com/coins/images/279/small/ethereum.png"
-    if clean_ticker in ['SOL', 'SOLANA']: return "https://assets.coingecko.com/coins/images/4128/small/solana.png"
-
-    return f"https://cdn.jsdelivr.net/gh/thefintz/icon-project@master/stock_logos/{clean_ticker}.png"
+    # 3. Fallback genérico para outros ativos
+    return f"https://cdn.jsdelivr.net/gh/thefintz/icon-project@master/stock_logos/{clean}.png"
 
 @st.cache_data(ttl=60)
 def get_full_market_data():
@@ -233,6 +236,7 @@ df_div = pd.DataFrame()
 
 if file_data is not None:
     try:
+        # Se for ExcelFile, procura aba. Se for DataFrame, já é dados.
         if isinstance(file_data, pd.ExcelFile):
             target_df = pd.DataFrame()
             for sheet in file_data.sheet_names:
@@ -245,15 +249,10 @@ if file_data is not None:
             target_df = file_data
 
         if not target_df.empty:
-            # Normaliza cabeçalhos
             target_df.columns = [str(c).strip().upper() for c in target_df.columns]
             cols = target_df.columns
             
-            # --- PEGA A COLUNA A (CONTÉM A FÓRMULA =IMAGE) ---
-            col_site_data = target_df.iloc[:, 0].astype(str)
-            target_df['SITE_F'] = col_site_data
-
-            # Mapeia as outras
+            # Mapeamento
             col_ticker = next((c for c in cols if 'TICKER' in c), None)
             col_empresa = next((c for c in cols if 'EMPRESA' in c), None)
             col_bazin = next((c for c in cols if 'BAZIN' in c), None)
@@ -264,9 +263,11 @@ if file_data is not None:
                 target_df['TICKER_F'] = target_df[col_ticker].astype(str).str.strip().str.upper()
                 target_df['BAZIN_F'] = target_df[col_bazin].apply(clean_currency)
                 
+                # DY CORRIGIDO
                 if col_dy: target_df['DY_F'] = target_df[col_dy].apply(clean_dy_percentage)
                 else: target_df['DY_F'] = 0.0
                 
+                # DPA
                 if col_dpa: target_df['DPA_F'] = target_df[col_dpa].apply(clean_currency)
                 else: target_df['DPA_F'] = 0.0
                 
@@ -279,8 +280,8 @@ if file_data is not None:
                     axis=1
                 )
                 
-                # --- EXTRAI O LINK DA FÓRMULA AQUI ---
-                target_df['LOGO_F'] = target_df.apply(lambda x: get_logo_url(x['TICKER_F'], x['SITE_F']), axis=1)
+                # --- BUSCA LOGO NO MAPA MANUAL ---
+                target_df['LOGO_F'] = target_df['TICKER_F'].apply(get_logo_url)
                 
                 target_df['NOME_F'] = target_df[col_empresa] if col_empresa else target_df['TICKER_F']
 
