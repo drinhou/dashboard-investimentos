@@ -5,7 +5,7 @@ import os
 import datetime
 import pytz
 
-# --- 1. CONFIGURAÇÃO (WIDE & DARK - SEM SIDEBAR) ---
+# --- 1. CONFIGURAÇÃO (WIDE & DARK - SEM ÍCONES) ---
 st.set_page_config(
     page_title="Dinheiro Data",
     page_icon="📊",
@@ -13,7 +13,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# --- 2. CSS DE ALTA PRECISÃO (VERDE, CENTRALIZAÇÃO & REMOÇÃO DE ELEMENTOS PADRÃO) ---
+# --- 2. CSS DE ALTA PRECISÃO (LIMPEZA TOTAL) ---
 st.markdown("""
     <style>
         /* SCROLL SUAVE */
@@ -23,10 +23,11 @@ st.markdown("""
         .stApp { background-color: #0c120f; color: #e0e0e0; }
         * { font-family: 'Segoe UI', 'Roboto', sans-serif; }
         
-        /* Ocultar Menu Hambúrguer e Footer Padrão do Streamlit */
+        /* Ocultar Menu Hambúrguer, Footer e BARRA DE FERRAMENTAS DA TABELA */
         #MainMenu {visibility: hidden;}
         footer {visibility: hidden;}
         header {visibility: hidden;}
+        [data-testid="stElementToolbar"] { display: none !important; } /* Remove botões da tabela */
         
         /* HEADER PRINCIPAL */
         .main-header {
@@ -75,12 +76,14 @@ st.markdown("""
         }
         .nav-card:hover .nav-title { color: #10b981 !important; }
 
-        /* --- CENTRALIZAÇÃO TOTAL DAS TABELAS --- */
+        /* --- CENTRALIZAÇÃO E REMOÇÃO DE SELEÇÃO --- */
+        
         div[data-testid="stDataFrame"] {
             border: 1px solid #1f2937;
             border-radius: 10px;
             background-color: #0c120f;
         }
+        
         div[data-testid="stDataFrame"] div[role="columnheader"] {
             background-color: #141f1b;
             color: #6ee7b7;
@@ -92,20 +95,20 @@ st.markdown("""
             justify-content: center !important;
             display: flex;
         }
-        div[data-testid="stDataFrame"] div[role="gridcell"] > div {
-            display: flex;
-            justify-content: center !important;
-            align-items: center !important;
-            text-align: center !important;
-            width: 100%;
-            height: 100%;
-        }
+        
+        /* Célula Centralizada e SEM BORDA DE SELEÇÃO AO CLICAR */
         div[data-testid="stDataFrame"] div[role="gridcell"] {
             display: flex;
             justify-content: center !important;
             align-items: center !important;
             background-color: #0c120f;
+            outline: none !important; /* Remove borda azul ao clicar */
+            box-shadow: none !important;
         }
+        div[data-testid="stDataFrame"] div[role="gridcell"]:focus {
+            background-color: #0c120f !important; /* Remove fundo cinza ao clicar */
+        }
+        
         div[data-testid="stDataFrame"] div[role="gridcell"] img {
             border-radius: 50%;
             border: 1px solid #374151;
@@ -308,17 +311,27 @@ st.markdown("""
 def show_mini_table(col, title, df):
     col.write(f"**{title}**")
     if not df.empty:
+        # Lógica para tratar IFIX ou ativos sem dados (0.0)
+        def format_prices(val):
+            if val == 0: return "-"
+            return "{:.2f}".format(val)
+
         def color_var(val):
             if val > 0: return 'color: #34d399; font-weight: bold;'
             if val < 0: return 'color: #f87171; font-weight: bold;'
+            if val == 0: return 'color: #6b7280;' # Cor neutra para 0
             return 'color: #6b7280;'
             
-        styled_df = df.style.format({ "Preço": "{:.2f}", "Var%": "{:+.2f}%" }).map(color_var, subset=['Var%'])
+        styled_df = df.style.format({ 
+            "Preço": format_prices, 
+            "Var%": "{:+.2f}%" 
+        }).map(color_var, subset=['Var%'])
+        
         col.dataframe(
             styled_df,
             column_config={
                 "Ativo": st.column_config.TextColumn("Ativo"),
-                "Preço": st.column_config.NumberColumn("Cotação"),
+                "Preço": st.column_config.TextColumn("Cotação"), # TextColumn aceita formatação customizada melhor
                 "Var%": st.column_config.TextColumn("Var %")
             },
             hide_index=True,
@@ -337,13 +350,12 @@ with r2c1: show_mini_table(r2c1, "🛢️ Commodities", M['COMMODITIES'])
 with r2c2: show_mini_table(r2c2, "💎 Criptoativos", M['CRIPTO'])
 
 
-# --- CARGA DADOS (AUTO) ---
+# --- CARGA DADOS ---
 df_radar, df_div = pd.DataFrame(), pd.DataFrame()
-file_data = None
-
-# Busca arquivo local automaticamente
+# Leitura automática
 if os.path.exists("PEC.xlsx"): file_data = pd.ExcelFile("PEC.xlsx")
 elif os.path.exists("PEC - Página1.csv"): file_data = pd.read_csv("PEC - Página1.csv")
+else: file_data = None
 
 if file_data is not None:
     try:
@@ -378,8 +390,8 @@ if file_data is not None:
                 target_df['Logo'] = target_df['TICKER_F'].apply(get_logo_url)
                 target_df['Ativo'] = target_df[c_emp] if c_emp else target_df['TICKER_F']
                 
-                df_radar = target_df[target_df['BAZIN_F'] > 0][['Logo', 'Ativo', 'BAZIN_F', 'PRECO_F', 'MARGEM_VAL']].sort_values('MARGEM_VAL', ascending=False)
-                df_div = target_df[target_df['DY_F'] > 0][['Logo', 'Ativo', 'DPA_F', 'DY_F']].sort_values('DY_F', ascending=False)
+                df_radar = target_df[target_df['BAZIN_F'] > 0][['Logo', 'Ativo', 'TICKER_F', 'BAZIN_F', 'PRECO_F', 'MARGEM_VAL']].sort_values('MARGEM_VAL', ascending=False)
+                df_div = target_df[target_df['DY_F'] > 0][['Logo', 'Ativo', 'TICKER_F', 'DPA_F', 'DY_F']].sort_values('DY_F', ascending=False)
     except: pass
 
 # --- 2. RADAR BAZIN ---
@@ -399,12 +411,23 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 if not df_radar.empty:
+    # SEARCH
+    search_term = st.text_input("🔍 Pesquisar Ativo (Bazin)", placeholder="Ex: BBAS3, Banco...", key="search_bazin")
+    
+    # FILTER
+    df_show = df_radar.copy()
+    if search_term:
+        df_show = df_show[
+            df_show['Ativo'].str.contains(search_term, case=False) | 
+            df_show['TICKER_F'].str.contains(search_term, case=False)
+        ]
+
     def style_margin(v):
         if v > 10: return 'color: #34d399; font-weight: bold;'
         if v < 0: return 'color: #f87171; font-weight: bold;'
         return 'color: #9ca3af;'
 
-    styled_radar = df_radar.style.format({
+    styled_radar = df_show.style.format({
         "BAZIN_F": "R$ {:.2f}", "PRECO_F": "R$ {:.2f}", "MARGEM_VAL": "{:+.1f}%"
     }).map(style_margin, subset=['MARGEM_VAL'])
 
@@ -413,6 +436,7 @@ if not df_radar.empty:
         column_config={
             "Logo": st.column_config.ImageColumn(""),
             "Ativo": st.column_config.TextColumn("Ativo"),
+            "TICKER_F": None, # Oculta ticker duplicado
             "BAZIN_F": st.column_config.NumberColumn("Preço Teto"),
             "PRECO_F": st.column_config.NumberColumn("Cotação"),
             "MARGEM_VAL": st.column_config.TextColumn("Margem"),
@@ -438,11 +462,22 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 if not df_div.empty:
+    # SEARCH
+    search_div = st.text_input("🔍 Pesquisar Ativo (Dividendos)", placeholder="Ex: TAEE11...", key="search_div")
+    
+    # FILTER
+    df_div_show = df_div.copy()
+    if search_div:
+        df_div_show = df_div_show[
+            df_div_show['Ativo'].str.contains(search_div, case=False) | 
+            df_div_show['TICKER_F'].str.contains(search_div, case=False)
+        ]
+
     def style_dy(v):
         if v > 8: return 'color: #34d399; font-weight: bold;'
         return 'color: #9ca3af;'
 
-    styled_div = df_div.style.format({
+    styled_div = df_div_show.style.format({
         "DPA_F": "R$ {:.2f}", "DY_F": "{:.2f}%"
     }).map(style_dy, subset=['DY_F'])
 
@@ -451,6 +486,7 @@ if not df_div.empty:
         column_config={
             "Logo": st.column_config.ImageColumn(""),
             "Ativo": st.column_config.TextColumn("Ativo"),
+            "TICKER_F": None,
             "DPA_F": st.column_config.NumberColumn("Div. / Ação"),
             "DY_F": st.column_config.TextColumn("Yield Projetado"),
         },
