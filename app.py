@@ -88,7 +88,7 @@ def get_logo_url(ticker):
     if not isinstance(ticker, str): return ""
     clean = ticker.replace('.SA', '').strip().upper()
     
-    # --- SUA LISTA DE DOMÍNIOS (HARDCODED PARA NÃO FALHAR) ---
+    # --- SUA LISTA DE DOMÍNIOS (ATUALIZADA COM IRB) ---
     meus_sites = {
         'CXSE3': 'caixaseguradora.com.br',
         'BBSE3': 'bbseguros.com.br',
@@ -97,20 +97,20 @@ def get_logo_url(ticker):
         'ABCB4': 'abcbrasil.com.br',
         'ITUB4': 'itau.com.br',
         'ISAE4': 'isaenergiabrasil.com.br',
-        'TRPL4': 'isaenergiabrasil.com.br', # Caso antigo
+        'TRPL4': 'isaenergiabrasil.com.br',
         'CMIG4': 'cemig.com.br',
         'SAPR4': 'sanepar.com.br',
         'SAPR11': 'sanepar.com.br',
         'PETR4': 'petrobras.com.br',
         'RANI3': 'irani.com.br',
-        'KLBN11': 'klabin.com.br', # Klabin tem vários, esse é seguro
+        'KLBN11': 'klabin.com.br',
         'KLBN4': 'klabin.com.br',
-        'IRBR3': 'irbre.com',
+        'IRBR3': 'www.irbre.com', # ATUALIZADO AQUI
         'FLRY3': 'fleury.com.br',
         'PSSA3': 'portoseguro.com.br'
     }
 
-    # 1. Se estiver na sua lista VIP, usa o Google Favicon (Alta qualidade)
+    # 1. Se estiver na sua lista VIP, usa o Google Favicon
     if clean in meus_sites:
         return f"https://www.google.com/s2/favicons?domain={meus_sites[clean]}&sz=128"
 
