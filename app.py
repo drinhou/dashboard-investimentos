@@ -7,120 +7,173 @@ import pytz
 
 # ========== 1. CONFIGURAÇÃO ==========
 st.set_page_config(
-    page_title="Dinheiro Data",
-    page_icon="📊",
+    page_title="Dinheiro Data | Onyx",
+    page_icon="⚡",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# ========== 2. CSS MASTER (LIMPO E FUNCIONAL) ==========
+# ========== 2. DESIGN SYSTEM "ONYX" (CSS AVANÇADO) ==========
 st.markdown("""
     <style>
-        /* --- GERAL --- */
-        html { scroll-behavior: smooth !important; }
-        .stApp { background-color: #0c120f; color: #e0e0e0; font-family: 'Segoe UI', sans-serif; }
+        /* IMPORTAR FONTE MODERNA */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
+
+        /* --- VARIÁVEIS DE COR (PALETA NEON DARK) --- */
+        :root {
+            --bg-deep: #050505;
+            --glass-bg: rgba(20, 20, 20, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --neon-green: #00ff9d;
+            --deep-green: #064e3b;
+            --text-main: #ffffff;
+            --text-dim: #888888;
+        }
+
+        /* --- RESET GLOBAL --- */
+        html, body, [class*="css"] {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-deep);
+            color: var(--text-main);
+            scroll-behavior: smooth !important;
+        }
         
-        /* Ocultar elementos padrão do Streamlit */
+        /* Remove excessos do Streamlit */
         #MainMenu, footer, header { visibility: hidden; }
-        [data-testid="stElementToolbar"] { display: none !important; } /* Menu da tabela */
-        
-        /* REMOVER ÍCONE DE LINK (CORRENTE) DOS TÍTULOS */
-        .stMarkdown a.anchor-link { display: none !important; }
-        [data-testid="stMarkdownContainer"] h1 a, 
-        [data-testid="stMarkdownContainer"] h2 a, 
-        [data-testid="stMarkdownContainer"] h3 a { 
-            display: none !important; 
-            pointer-events: none;
-        }
+        [data-testid="stElementToolbar"] { display: none !important; }
+        .block-container { padding-top: 2rem; padding-bottom: 5rem; }
 
-        /* --- CORES DO SISTEMA (VERDE) --- */
-        :root { --primary-color: #10b981; }
-        
-        /* Input de Texto (Foco Verde) */
-        div[data-baseweb="base-input"] { border-color: #374151; }
-        div[data-baseweb="base-input"]:focus-within {
-            border-color: #10b981 !important;
-            box-shadow: 0 0 0 1px #10b981 !important;
-        }
-
-        /* --- HEADER PRINCIPAL --- */
-        .main-header {
+        /* --- HEADER HERO --- */
+        .hero-container {
             text-align: center;
-            padding: 40px 0 20px 0;
+            padding: 60px 20px;
+            background: radial-gradient(circle at center, rgba(0, 255, 157, 0.08) 0%, transparent 60%);
             margin-bottom: 40px;
-            border-bottom: 1px solid #1f2937;
-            background: radial-gradient(circle at center, #132e25 0%, #0c120f 100%);
+            border-bottom: 1px solid var(--glass-border);
         }
-        .main-title {
-            font-size: 3rem;
+        
+        .hero-title {
+            font-size: 4rem;
             font-weight: 800;
-            background: -webkit-linear-gradient(45deg, #10b981, #34d399);
+            letter-spacing: -2px;
+            background: linear-gradient(180deg, #fff 0%, #aaa 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             margin: 0;
-            letter-spacing: -1px;
+            text-shadow: 0 0 30px rgba(0, 255, 157, 0.2);
         }
-        .main-greeting {
-            font-size: 1rem;
-            color: #9ca3af;
-            font-weight: 400;
-            margin-top: 5px;
+        
+        .hero-subtitle {
+            font-size: 1.1rem;
+            color: var(--neon-green);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
         }
+        
+        .live-dot {
+            width: 8px;
+            height: 8px;
+            background-color: var(--neon-green);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--neon-green);
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
 
-        /* --- BOTÕES DE NAVEGAÇÃO --- */
-        .nav-card {
-            background-color: #111a16;
-            border: 1px solid #1f2937;
-            border-radius: 12px;
-            padding: 20px;
+        /* --- CARDS DE NAVEGAÇÃO (GLASSMORPHISM) --- */
+        .glass-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 25px;
             text-align: center;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
             text-decoration: none !important;
             display: block;
-            margin-bottom: 20px;
-            transition: all 0.3s ease;
+            height: 100%;
         }
-        .nav-title { font-weight: 700; font-size: 1.1rem; color: #e5e7eb !important; display: block; }
-        .nav-desc { font-size: 0.8rem; color: #6b7280 !important; display: block; margin-top: 5px; }
         
-        .nav-card:hover {
-            border-color: #10b981;
-            transform: translateY(-3px);
-            box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.1);
+        .glass-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 2px;
+            background: linear-gradient(90deg, transparent, var(--neon-green), transparent);
+            opacity: 0;
+            transition: 0.3s;
         }
-        .nav-card:hover .nav-title { color: #10b981 !important; }
+        
+        .glass-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px -10px rgba(0, 255, 157, 0.15);
+            border-color: rgba(0, 255, 157, 0.3);
+        }
+        
+        .glass-card:hover::before { opacity: 1; }
+        
+        .card-icon { font-size: 1.8rem; margin-bottom: 10px; display: block; }
+        .card-title { font-size: 1.2rem; font-weight: 700; color: #fff !important; display: block; }
+        .card-desc { font-size: 0.85rem; color: #888 !important; margin-top: 5px; display: block; }
 
-        /* --- TABELAS: CENTRALIZAÇÃO & BLOQUEIO --- */
-        div[data-testid="stDataFrame"] {
-            border: 1px solid #1f2937;
-            border-radius: 10px;
-            background-color: #0c120f;
+        /* --- CONTAINER DE SEÇÃO (FUTURISTA) --- */
+        .section-box {
+            margin-top: 60px;
+            margin-bottom: 20px;
+            padding: 20px;
+            border-left: 4px solid var(--neon-green);
+            background: linear-gradient(90deg, rgba(0, 255, 157, 0.05) 0%, transparent 100%);
+            border-radius: 0 12px 12px 0;
         }
-        
-        /* Cabeçalho */
+        .section-title { font-size: 1.8rem; font-weight: 700; color: #fff; margin: 0; }
+        .section-meta { font-size: 0.9rem; color: var(--neon-green); font-family: 'Courier New', monospace; margin-top: 5px; }
+
+        /* --- TABELAS REESTILIZADAS (CLEAN & CENTER) --- */
+        div[data-testid="stDataFrame"] {
+            background-color: #0a0a0a !important;
+            border: 1px solid #222 !important;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+
+        /* Header Tabela */
         div[data-testid="stDataFrame"] div[role="columnheader"] {
-            background-color: #141f1b;
-            color: #6ee7b7;
-            font-size: 12px;
-            font-weight: 700;
+            background-color: #111 !important;
+            color: #888 !important;
+            font-size: 11px !important;
+            font-weight: 700 !important;
             text-transform: uppercase;
-            border-bottom: 1px solid #064e3b;
+            letter-spacing: 1px;
+            border-bottom: 1px solid #333 !important;
             text-align: center !important;
             justify-content: center !important;
             display: flex;
         }
-        
-        /* Células */
+
+        /* Células Tabela */
         div[data-testid="stDataFrame"] div[role="gridcell"] {
+            background-color: #0a0a0a !important;
+            color: #eee !important;
+            font-size: 13px !important;
+            font-weight: 500 !important;
+            border-bottom: 1px solid #1a1a1a !important;
             display: flex;
             justify-content: center !important;
             align-items: center !important;
-            background-color: #0c120f;
-            outline: none !important; /* Remove borda de seleção */
-            border: none !important;
-            pointer-events: none !important; /* Impede clique */
+            pointer-events: none !important; /* BLOQUEIA SELEÇÃO */
         }
         
-        /* Centraliza conteúdo interno do Streamlit */
+        /* Centralização Interna */
         div[data-testid="stDataFrame"] div[role="gridcell"] > div {
             display: flex;
             justify-content: center !important;
@@ -129,63 +182,46 @@ st.markdown("""
             text-align: center !important;
         }
 
-        /* Logos */
-        div[data-testid="stDataFrame"] div[role="gridcell"] img {
+        /* Logos Circulares */
+        div[data-testid="stDataFrame"] img {
             border-radius: 50%;
-            border: 1px solid #374151;
-            padding: 2px;
-            background-color: #fff;
-            width: 30px;
-            height: 30px;
-            object-fit: contain;
+            width: 28px !important;
+            height: 28px !important;
+            object-fit: cover;
+            border: 1px solid #333;
+            background: #fff;
+            padding: 1px;
             display: block;
             margin: 0 auto;
         }
 
-        /* --- SEÇÕES & BADGES --- */
-        .section-wrapper { margin-top: 60px; margin-bottom: 20px; }
-        .section-header {
-            font-size: 1.6rem;
-            font-weight: 700;
-            color: #f3f4f6;
-            border-left: 6px solid #10b981;
-            padding-left: 15px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
+        /* INPUTS DE PESQUISA (GLOW) */
+        div[data-baseweb="base-input"] {
+            background-color: #0a0a0a !important;
+            border-color: #333 !important;
+            border-radius: 8px !important;
+            color: white !important;
         }
-        .section-desc {
-            font-size: 0.9rem;
-            color: #9ca3af;
-            margin-top: 8px;
-            margin-left: 21px;
-            max-width: 800px;
-            line-height: 1.4;
+        div[data-baseweb="base-input"]:focus-within {
+            border-color: var(--neon-green) !important;
+            box-shadow: 0 0 15px rgba(0, 255, 157, 0.1) !important;
         }
-        .status-badge {
-            background-color: #064e3b;
-            color: #34d399;
-            font-size: 0.8rem;
-            padding: 5px 12px;
-            border-radius: 99px;
-            border: 1px solid #059669;
-            font-weight: 600;
-        }
-        
-        /* --- FOOTER --- */
-        .footer-disclaimer {
-            margin-top: 100px;
+        input { color: white !important; }
+
+        /* FOOTER */
+        .legal-footer {
+            margin-top: 80px;
             padding: 40px;
-            border-top: 1px solid #1f2937;
+            border-top: 1px solid #222;
             text-align: center;
-            color: #4b5563;
-            font-size: 0.8rem;
-            background-color: #0c120f;
+            font-size: 0.75rem;
+            color: #555;
+            background: #080808;
         }
     </style>
 """, unsafe_allow_html=True)
 
-# ========== 3. FUNÇÕES & LÓGICA ==========
+# ========== 3. LÓGICA ROBUSTA ==========
 
 def get_time_greeting():
     tz = pytz.timezone('America/Sao_Paulo')
@@ -194,21 +230,18 @@ def get_time_greeting():
     greeting = "Boa noite"
     if 5 <= h < 12: greeting = "Bom dia"
     elif 12 <= h < 18: greeting = "Boa tarde"
-    time_str = now.strftime("%H:%M")
-    return greeting, time_str
+    return greeting, now.strftime("%H:%M")
 
 def clean_currency(x):
     if isinstance(x, (int, float)): return float(x)
     if isinstance(x, str):
-        clean = x.replace('R$', '').replace('.', '').replace(',', '.').replace('%', '').strip()
-        try: return float(clean)
+        try: return float(x.replace('R$', '').replace('.', '').replace(',', '.').replace('%', '').strip())
         except: return 0.0
     return 0.0
 
 def clean_dy_percentage(x):
     val = clean_currency(x)
-    if val > 0 and val < 1.0: return val * 100
-    return val
+    return val * 100 if 0 < val < 1.0 else val
 
 def get_logo_url(ticker):
     if not isinstance(ticker, str): return ""
@@ -224,7 +257,6 @@ def get_logo_url(ticker):
         'PSSA3': 'portoseguro.com.br', 'WEGE3': 'weg.net', 'VALE3': 'vale.com',
         'ABEV3': 'ambev.com.br', 'B3SA3': 'b3.com.br', 'EGIE3': 'engie.com.br'
     }
-
     if clean in sites: return f"https://www.google.com/s2/favicons?domain={sites[clean]}&sz=128"
     if clean in ['BTC','BITCOIN']: return "https://assets.coingecko.com/coins/images/1/small/bitcoin.png"
     if clean in ['ETH','ETHEREUM']: return "https://assets.coingecko.com/coins/images/279/small/ethereum.png"
@@ -232,11 +264,11 @@ def get_logo_url(ticker):
     return f"https://cdn.jsdelivr.net/gh/thefintz/icon-project@master/stock_logos/{clean}.png"
 
 @st.cache_data(ttl=60)
-def get_market_data_distributed():
+def get_market_data():
     groups = {
-        'USA': { 'S&P 500': '^GSPC', 'NASDAQ': '^IXIC', 'DOW JONES': '^DJI', 'VIX (Medo)': '^VIX' },
-        'BRASIL': { 'IBOVESPA': '^BVSP', 'IFIX (FIIs)': 'IFIX.SA', 'VALE': 'VALE3.SA', 'PETROBRAS': 'PETR4.SA' },
-        'MOEDAS': { 'DÓLAR': 'BRL=X', 'EURO': 'EURBRL=X', 'LIBRA': 'GBPBRL=X', 'DXY Global': 'DX-Y.NYB' },
+        'USA': { 'S&P 500': '^GSPC', 'NASDAQ': '^IXIC', 'DOW JONES': '^DJI', 'VIX': '^VIX' },
+        'BRASIL': { 'IBOVESPA': '^BVSP', 'IFIX': 'IFIX.SA', 'VALE': 'VALE3.SA', 'PETROBRAS': 'PETR4.SA' },
+        'MOEDAS': { 'DÓLAR': 'BRL=X', 'EURO': 'EURBRL=X', 'LIBRA': 'GBPBRL=X', 'DXY': 'DX-Y.NYB' },
         'COMMODITIES': { 'OURO': 'GC=F', 'PRATA': 'SI=F', 'COBRE': 'HG=F', 'PETRÓLEO': 'BZ=F' },
         'CRIPTO': { 'BITCOIN': 'BTC-USD', 'ETHEREUM': 'ETH-USD', 'SOLANA': 'SOL-USD', 'BNB': 'BNB-USD' }
     }
@@ -276,11 +308,10 @@ def get_br_prices(ticker_list):
         return prices
     except: return {}
 
-# Função para carregar e processar o arquivo (Limpa o código principal)
-def load_and_process_data():
+# Função para carregar dados
+def load_data():
     df_radar, df_div = pd.DataFrame(), pd.DataFrame()
     file_data = None
-    
     if os.path.exists("PEC.xlsx"): file_data = pd.ExcelFile("PEC.xlsx")
     elif os.path.exists("PEC - Página1.csv"): file_data = pd.read_csv("PEC - Página1.csv")
     
@@ -311,7 +342,6 @@ def load_and_process_data():
                     
                     prices = get_br_prices(target_df['TICKER_F'].unique().tolist())
                     target_df['PRECO_F'] = target_df['TICKER_F'].map(prices).fillna(0)
-                    
                     target_df['MARGEM_VAL'] = target_df.apply(lambda x: ((x['BAZIN_F'] - x['PRECO_F']) / x['PRECO_F'] * 100) if x['PRECO_F'] > 0 else -999, axis=1)
                     target_df['Logo'] = target_df['TICKER_F'].apply(get_logo_url)
                     target_df['Ativo'] = target_df[c_emp] if c_emp else target_df['TICKER_F']
@@ -321,109 +351,190 @@ def load_and_process_data():
         except: pass
     return df_radar, df_div
 
-# ========== 4. LAYOUT DA PÁGINA ==========
+# ========== 4. LAYOUT / UI ==========
 
-greeting_text, time_text = get_time_greeting()
+greeting, time_now = get_time_greeting()
 
-# Header
+# Hero Section
 st.markdown(f"""
-    <div class='main-header'>
-        <h1 class='main-title'>Dinheiro Data</h1>
-        <p class='main-greeting'>{greeting_text}, Investidor. <span style='font-size: 0.8em; opacity: 0.6;'>| Dados: {time_text}</span></p>
+    <div class='hero-container'>
+        <h1 class='hero-title'>DINHEIRO DATA</h1>
+        <div class='hero-subtitle'>
+            <div class='live-dot'></div>
+            {greeting} • MERCADO EM TEMPO REAL • {time_now}
+        </div>
     </div>
 """, unsafe_allow_html=True)
 
-# Navegação
-nav1, nav2, nav3 = st.columns(3)
-with nav1:
-    st.markdown("<a href='#panorama' class='nav-card'><span class='nav-title'>🌍 Panorama Global</span><span class='nav-desc'>Visão Macro</span></a>", unsafe_allow_html=True)
-with nav2:
-    st.markdown("<a href='#radar-bazin' class='nav-card'><span class='nav-title'>🎯 Radar Bazin</span><span class='nav-desc'>Análise de Preço Teto</span></a>", unsafe_allow_html=True)
-with nav3:
-    st.markdown("<a href='#dividendos' class='nav-card'><span class='nav-title'>💰 Dividendos</span><span class='nav-desc'>Projeção de Renda</span></a>", unsafe_allow_html=True)
+# Navigation Cards (Glassmorphism)
+n1, n2, n3 = st.columns(3)
+with n1:
+    st.markdown("""
+    <a href='#panorama' class='glass-card'>
+        <span class='card-icon'>🌍</span>
+        <span class='card-title'>Panorama Global</span>
+        <span class='card-desc'>Índices, Moedas e Commodities</span>
+    </a>
+    """, unsafe_allow_html=True)
+with n2:
+    st.markdown("""
+    <a href='#radar-bazin' class='glass-card'>
+        <span class='card-icon'>🎯</span>
+        <span class='card-title'>Radar Bazin</span>
+        <span class='card-desc'>Preço Teto & Margem de Segurança</span>
+    </a>
+    """, unsafe_allow_html=True)
+with n3:
+    st.markdown("""
+    <a href='#dividendos' class='glass-card'>
+        <span class='card-icon'>💰</span>
+        <span class='card-title'>Dividendos</span>
+        <span class='card-desc'>Projeções de Yield 2026</span>
+    </a>
+    """, unsafe_allow_html=True)
 
-M = get_market_data_distributed()
+# Carrega dados
+M = get_market_data()
+df_radar, df_div = load_data()
 
-# --- 1. PANORAMA ---
+# --- PANORAMA ---
 st.markdown("<div id='panorama'></div>", unsafe_allow_html=True)
-st.markdown("<div class='section-wrapper'><div class='section-header'><span>🌍 Panorama Global</span></div></div>", unsafe_allow_html=True)
+st.markdown("""
+<div class='section-box'>
+    <div class='section-title'>Panorama Global</div>
+    <div class='section-meta'>// MONITORAMENTO DE ATIVOS</div>
+</div>
+""", unsafe_allow_html=True)
 
-def show_mini_table(col, title, df):
-    col.write(f"**{title}**")
+def render_market_table(col, title, df):
+    col.markdown(f"<div style='margin-bottom:10px; font-weight:700; color:#fff;'>{title}</div>", unsafe_allow_html=True)
     if not df.empty:
-        # Lógica para IFIX e zeros
-        def format_price(val): return "-" if val == 0 else "{:.2f}".format(val)
+        # Styles
         def color_var(val):
-            if val > 0: return 'color: #34d399; font-weight: bold;'
-            if val < 0: return 'color: #f87171; font-weight: bold;'
-            return 'color: #6b7280;'
-            
-        styled_df = df.style.format({ "Preço": format_price, "Var%": "{:+.2f}%" }).map(color_var, subset=['Var%'])
-        col.dataframe(styled_df, column_config={"Ativo": st.column_config.TextColumn("Ativo"), "Preço": st.column_config.TextColumn("Cotação"), "Var%": st.column_config.TextColumn("Var %")}, hide_index=True, use_container_width=True)
+            if val > 0: return 'color: #00ff9d; font-weight: 600;'
+            if val < 0: return 'color: #ff4d4d; font-weight: 600;'
+            return 'color: #666;'
+        
+        def fmt_price(val): return "-" if val == 0 else f"{val:.2f}"
 
-r1c1, r1c2, r1c3 = st.columns(3)
-with r1c1: show_mini_table(r1c1, "🇺🇸 Índices EUA", M['USA'])
-with r1c2: show_mini_table(r1c2, "🇧🇷 Índices Brasil", M['BRASIL'])
-with r1c3: show_mini_table(r1c3, "💱 Moedas", M['MOEDAS'])
+        styled = df.style.format({'Preço': fmt_price, 'Var%': '{:+.2f}%'}).map(color_var, subset=['Var%'])
+        
+        col.dataframe(
+            styled,
+            column_config={
+                'Ativo': st.column_config.TextColumn("Ativo"),
+                'Preço': st.column_config.TextColumn("Cotação"),
+                'Var%': st.column_config.TextColumn("Var %")
+            },
+            hide_index=True,
+            use_container_width=True
+        )
+
+r1, r2, r3 = st.columns(3)
+render_market_table(r1, "🇺🇸 ÍNDICES EUA", M['USA'])
+render_market_table(r2, "🇧🇷 ÍNDICES BRASIL", M['BRASIL'])
+render_market_table(r3, "💱 MOEDAS", M['MOEDAS'])
+
 st.write("") 
-r2c1, r2c2 = st.columns(2)
-with r2c1: show_mini_table(r2c1, "🛢️ Commodities", M['COMMODITIES'])
-with r2c2: show_mini_table(r2c2, "💎 Criptoativos", M['CRIPTO'])
 
-# Carrega dados do arquivo
-df_radar, df_div = load_and_process_data()
+r4, r5 = st.columns(2)
+render_market_table(r4, "🛢️ COMMODITIES", M['COMMODITIES'])
+render_market_table(r5, "💎 CRIPTOATIVOS", M['CRIPTO'])
 
-# --- 2. RADAR BAZIN ---
+# --- RADAR BAZIN ---
 st.markdown("<div id='radar-bazin'></div>", unsafe_allow_html=True)
-count_opp = len(df_radar[df_radar['MARGEM_VAL'] > 10]) if not df_radar.empty else 0
+count_bazin = len(df_radar[df_radar['MARGEM_VAL'] > 10]) if not df_radar.empty else 0
 
 st.markdown(f"""
-<div class='section-wrapper'>
-    <div class='section-header'><span>🎯 Radar Bazin</span><span class='status-badge'>{count_opp} Ativos com desconto (>10%)</span></div>
-    <div class='section-desc'>O Preço Teto é calculado utilizando a metodologia de Décio Bazin (adaptado à nossa visão), visando identificar ativos que pagam bons dividendos a preços descontados.</div>
+<div class='section-box'>
+    <div style='display:flex; justify-content:space-between; align-items:center;'>
+        <div class='section-title'>Radar Bazin</div>
+        <div style='background:#064e3b; color:#00ff9d; padding:5px 15px; border-radius:20px; font-size:0.8rem; font-weight:700;'>
+            {count_bazin} OPORTUNIDADES (>10%)
+        </div>
+    </div>
+    <div style='margin-top:10px; color:#888; font-size:0.9rem;'>
+        O Preço Teto é calculado utilizando a metodologia de Décio Bazin (adaptado à nossa visão), visando identificar ativos que pagam bons dividendos a preços descontados.
+    </div>
 </div>
 """, unsafe_allow_html=True)
 
 if not df_radar.empty:
-    search_bazin = st.text_input("🔍 Pesquisar Ativo (Bazin)", placeholder="Ex: BB Seguridade", key="sbazin")
-    df_show = df_radar.copy()
-    if search_bazin: df_show = df_show[df_show['Ativo'].str.contains(search_bazin, case=False) | df_show['TICKER_F'].str.contains(search_bazin, case=False)]
+    search1 = st.text_input("", placeholder="🔍 Ex: BB Seguridade (Bazin)...", key="s1")
+    
+    data_show = df_radar.copy()
+    if search1:
+        data_show = data_show[data_show['Ativo'].str.contains(search1, case=False) | data_show['TICKER_F'].str.contains(search1, case=False)]
 
-    def style_margin(v):
-        if v > 10: return 'color: #34d399; font-weight: bold;'
-        if v < 0: return 'color: #f87171; font-weight: bold;'
-        return 'color: #9ca3af;'
+    def style_bazin(v):
+        if v > 10: return 'color: #00ff9d; font-weight: 700;'
+        if v < 0: return 'color: #ff4d4d; font-weight: 700;'
+        return 'color: #666;'
 
-    styled_radar = df_show.style.format({"BAZIN_F": "R$ {:.2f}", "PRECO_F": "R$ {:.2f}", "MARGEM_VAL": "{:+.1f}%"}).map(style_margin, subset=['MARGEM_VAL'])
-    st.dataframe(styled_radar, column_config={"Logo": st.column_config.ImageColumn(""), "Ativo": st.column_config.TextColumn("Ativo"), "TICKER_F": None, "BAZIN_F": st.column_config.NumberColumn("Preço Teto"), "PRECO_F": st.column_config.NumberColumn("Cotação"), "MARGEM_VAL": st.column_config.TextColumn("Margem")}, hide_index=True, use_container_width=True)
+    st.dataframe(
+        data_show.style.format({
+            'BAZIN_F': 'R$ {:.2f}', 'PRECO_F': 'R$ {:.2f}', 'MARGEM_VAL': '{:+.1f}%'
+        }).map(style_bazin, subset=['MARGEM_VAL']),
+        column_config={
+            "Logo": st.column_config.ImageColumn(""),
+            "Ativo": st.column_config.TextColumn("Ativo"),
+            "TICKER_F": None,
+            "BAZIN_F": st.column_config.TextColumn("Preço Teto"),
+            "PRECO_F": st.column_config.TextColumn("Cotação"),
+            "MARGEM_VAL": st.column_config.TextColumn("Margem")
+        },
+        hide_index=True,
+        use_container_width=True
+    )
 
-# --- 3. DIVIDENDOS ---
+# --- DIVIDENDOS ---
 st.markdown("<div id='dividendos'></div>", unsafe_allow_html=True)
-count_dy = len(df_div[df_div['DY_F'] > 8]) if not df_div.empty else 0
+count_div = len(df_div[df_div['DY_F'] > 8]) if not df_div.empty else 0
 
 st.markdown(f"""
-<div class='section-wrapper'>
-    <div class='section-header'><span>💰 Dividendos</span><span class='status-badge'>{count_dy} Ativos com Yield > 8%</span></div>
-    <div class='section-desc'>Estimativas de rendimento anual (Dividend Yield) para o exercício de 2026, baseadas em projeções de mercado e histórico de pagamentos das companhias.</div>
+<div class='section-box'>
+    <div style='display:flex; justify-content:space-between; align-items:center;'>
+        <div class='section-title'>Dividendos</div>
+        <div style='background:#064e3b; color:#00ff9d; padding:5px 15px; border-radius:20px; font-size:0.8rem; font-weight:700;'>
+            {count_div} ATIVOS PAGADORES (>8%)
+        </div>
+    </div>
+    <div style='margin-top:10px; color:#888; font-size:0.9rem;'>
+        Estimativas de rendimento anual (Dividend Yield) para o exercício de 2026, baseadas em projeções de mercado e histórico de pagamentos.
+    </div>
 </div>
 """, unsafe_allow_html=True)
 
 if not df_div.empty:
-    search_div = st.text_input("🔍 Pesquisar Ativo (Dividendos)", placeholder="Ex: BB Seguridade", key="sdiv")
-    df_div_show = df_div.copy()
-    if search_div: df_div_show = df_div_show[df_div_show['Ativo'].str.contains(search_div, case=False) | df_div_show['TICKER_F'].str.contains(search_div, case=False)]
-
-    def style_dy(v): return 'color: #34d399; font-weight: bold;' if v > 8 else 'color: #9ca3af;'
+    search2 = st.text_input("", placeholder="🔍 Ex: BB Seguridade (Dividendos)...", key="s2")
     
-    styled_div = df_div_show.style.format({"DPA_F": "R$ {:.2f}", "DY_F": "{:.2f}%"}).map(style_dy, subset=['DY_F'])
-    st.dataframe(styled_div, column_config={"Logo": st.column_config.ImageColumn(""), "Ativo": st.column_config.TextColumn("Ativo"), "TICKER_F": None, "DPA_F": st.column_config.NumberColumn("Div. / Ação"), "DY_F": st.column_config.TextColumn("Yield Projetado")}, hide_index=True, use_container_width=True)
+    div_show = df_div.copy()
+    if search2:
+        div_show = div_show[div_show['Ativo'].str.contains(search2, case=False) | div_show['TICKER_F'].str.contains(search2, case=False)]
+
+    def style_dy(v):
+        return 'color: #00ff9d; font-weight: 700;' if v > 8 else 'color: #666;'
+
+    st.dataframe(
+        div_show.style.format({
+            'DPA_F': 'R$ {:.2f}', 'DY_F': '{:.2f}%'
+        }).map(style_dy, subset=['DY_F']),
+        column_config={
+            "Logo": st.column_config.ImageColumn(""),
+            "Ativo": st.column_config.TextColumn("Ativo"),
+            "TICKER_F": None,
+            "DPA_F": st.column_config.TextColumn("Div. / Ação"),
+            "DY_F": st.column_config.TextColumn("Yield Projetado")
+        },
+        hide_index=True,
+        use_container_width=True
+    )
 
 # --- FOOTER ---
 st.markdown("""
-    <div class='footer-disclaimer'>
-        <strong>⚠️ ISENÇÃO DE RESPONSABILIDADE</strong><br><br>
-        As informações, dados e indicadores apresentados nesta plataforma são obtidos de fontes públicas e cálculos automatizados. Este dashboard tem caráter estritamente educativo e informativo.<br>
-        <strong>Nenhum conteúdo aqui deve ser interpretado como recomendação de compra, venda ou manutenção de ativos mobiliários.</strong><br>
-        Investimentos em renda variável estão sujeitos a riscos de mercado e perda de capital. Realize sua própria análise ou consulte um profissional certificado antes de tomar decisões financeiras.
-    </div>
+<div class='legal-footer'>
+    <strong>⚠️ ISENÇÃO DE RESPONSABILIDADE</strong><br><br>
+    Este dashboard tem caráter estritamente educativo e informativo. Nenhuma informação aqui apresentada constitui recomendação de compra ou venda de ativos.
+    Os dados são obtidos de fontes públicas e podem conter atrasos.
+</div>
 """, unsafe_allow_html=True)
