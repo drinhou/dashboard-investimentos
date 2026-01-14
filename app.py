@@ -1,11 +1,11 @@
-\import streamlit as st
+import streamlit as st
 import pandas as pd
 import yfinance as yf
 import os
 import datetime
 import pytz
 
-# ========== 1. CONFIGURAÇÃO (MODO TERMINAL) ==========
+# ========== 1. CONFIGURAÇÃO ==========
 st.set_page_config(
     page_title="Dinheiro Data | Onyx",
     page_icon="⚡",
@@ -13,21 +13,19 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# ========== 2. ENGENHARIA VISUAL (CSS AVANÇADO) ==========
+# ========== 2. CSS RESPONSIVO (ONYX HYBRID) ==========
 st.markdown("""
     <style>
-        /* IMPORTAR FONTE PREMIUM */
+        /* IMPORTAR FONTE */
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
 
-        /* --- VARIÁVEIS DE COR (PALETA ONYX NEON) --- */
+        /* --- VARIÁVEIS --- */
         :root {
-            --bg-deep: #050505;          /* Preto Absoluto */
-            --glass-bg: rgba(20, 20, 20, 0.6); /* Vidro Escuro */
-            --glass-border: rgba(255, 255, 255, 0.1); /* Borda Sutil */
-            --neon-green: #00ff9d;       /* Verde Cyberpunk */
-            --dark-green: #064e3b;       /* Verde Profundo */
+            --bg-deep: #050505;
+            --glass-bg: rgba(20, 20, 20, 0.6);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --neon-green: #00ff9d;
             --text-main: #ffffff;
-            --text-dim: #888888;
         }
 
         /* --- RESET & BASE --- */
@@ -38,41 +36,29 @@ st.markdown("""
             scroll-behavior: smooth !important;
         }
         
-        /* Limpeza do Streamlit */
         #MainMenu, footer, header { visibility: hidden; }
         [data-testid="stElementToolbar"] { display: none !important; }
-        .block-container { padding-top: 1rem; padding-bottom: 5rem; }
+        .block-container { padding-top: 1rem; padding-bottom: 3rem; }
 
-        /* --- ANIMAÇÕES --- */
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes pulse {
-            0% { box-shadow: 0 0 0 0 rgba(0, 255, 157, 0.7); }
-            70% { box-shadow: 0 0 0 10px rgba(0, 255, 157, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(0, 255, 157, 0); }
-        }
-
-        /* --- HEADER HERO (CINEMATOGRÁFICO) --- */
+        /* --- HEADER HERO (ADAPTATIVO) --- */
         .hero-container {
             text-align: center;
-            padding: 80px 20px 40px 20px;
+            padding: 60px 20px 40px 20px;
             background: radial-gradient(circle at center, rgba(0, 255, 157, 0.05) 0%, transparent 70%);
-            margin-bottom: 40px;
-            animation: fadeInUp 0.8s ease-out;
+            margin-bottom: 30px;
             border-bottom: 1px solid rgba(255,255,255,0.05);
         }
         
         .hero-title {
-            font-size: 4.5rem;
+            font-size: 4rem; /* Desktop */
             font-weight: 800;
-            letter-spacing: -3px;
+            letter-spacing: -2px;
             background: linear-gradient(180deg, #ffffff 0%, #666666 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             margin: 0;
             text-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            line-height: 1.1;
         }
         
         .hero-subtitle {
@@ -80,32 +66,32 @@ st.markdown("""
             color: var(--neon-green);
             font-weight: 600;
             text-transform: uppercase;
-            letter-spacing: 3px;
+            letter-spacing: 2px;
             margin-top: 15px;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 12px;
+            gap: 10px;
         }
         
         .live-indicator {
-            width: 8px;
-            height: 8px;
+            width: 8px; height: 8px;
             background-color: var(--neon-green);
             border-radius: 50%;
+            box-shadow: 0 0 10px var(--neon-green);
             animation: pulse 2s infinite;
         }
 
-        /* --- CARTÕES DE NAVEGAÇÃO (GLASSMORPHISM) --- */
+        /* --- CARDS DE NAVEGAÇÃO --- */
         .glass-card {
             background: var(--glass-bg);
             backdrop-filter: blur(16px);
             -webkit-backdrop-filter: blur(16px);
             border: 1px solid var(--glass-border);
-            border-radius: 20px; /* Mais arredondado */
-            padding: 30px;
+            border-radius: 16px;
+            padding: 25px;
             text-align: center;
-            transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+            transition: all 0.3s ease;
             cursor: pointer;
             text-decoration: none !important;
             display: block;
@@ -114,80 +100,64 @@ st.markdown("""
             overflow: hidden;
         }
         
-        /* Brilho ao passar o mouse */
-        .glass-card::after {
-            content: "";
-            position: absolute;
-            top: -50%; left: -50%; width: 200%; height: 200%;
-            background: radial-gradient(circle, rgba(0,255,157,0.1) 0%, transparent 60%);
-            opacity: 0;
-            transform: scale(0.5);
-            transition: 0.4s;
-        }
-        
-        .glass-card:hover {
-            transform: translateY(-8px);
+        .glass-card:hover, .glass-card:active {
             border-color: rgba(0, 255, 157, 0.4);
-            box-shadow: 0 15px 40px -10px rgba(0, 0, 0, 0.8);
+            transform: translateY(-4px);
         }
-        .glass-card:hover::after { opacity: 1; transform: scale(1); }
         
-        .card-icon { font-size: 2rem; margin-bottom: 15px; display: block; filter: grayscale(100%); transition: 0.3s; }
-        .glass-card:hover .card-icon { filter: grayscale(0%); transform: scale(1.1); }
-        
-        .card-title { font-size: 1.2rem; font-weight: 700; color: #fff; display: block; margin-bottom: 5px; }
-        .card-desc { font-size: 0.8rem; color: #666; display: block; font-weight: 500; }
+        .card-icon { font-size: 1.8rem; margin-bottom: 10px; display: block; }
+        .card-title { font-size: 1.1rem; font-weight: 700; color: #fff; display: block; margin-bottom: 4px; }
+        .card-desc { font-size: 0.8rem; color: #777; display: block; }
 
-        /* --- TÍTULOS DE SEÇÃO (FUTURISTA) --- */
+        /* --- TÍTULOS DE SEÇÃO --- */
         .section-box {
-            margin-top: 80px;
-            margin-bottom: 25px;
-            padding-left: 20px;
+            margin-top: 50px;
+            margin-bottom: 20px;
+            padding-left: 15px;
             border-left: 4px solid var(--neon-green);
             background: linear-gradient(90deg, rgba(0, 255, 157, 0.05) 0%, transparent 100%);
             display: flex;
             align-items: center;
             justify-content: space-between;
-            border-radius: 0 16px 16px 0;
-            padding-top: 15px;
-            padding-bottom: 15px;
-            animation: fadeInUp 0.6s ease-out;
+            border-radius: 0 12px 12px 0;
+            padding-top: 12px;
+            padding-bottom: 12px;
         }
-        .section-title { font-size: 1.5rem; font-weight: 800; color: #fff; text-transform: uppercase; letter-spacing: 1px; }
+        .section-title { font-size: 1.4rem; font-weight: 800; color: #fff; text-transform: uppercase; }
         .section-badge { 
             background: rgba(0, 255, 157, 0.1); 
             color: var(--neon-green); 
-            padding: 6px 14px; 
-            border-radius: 8px; 
-            font-size: 0.75rem; 
+            padding: 4px 10px; 
+            border-radius: 6px; 
+            font-size: 0.7rem; 
             font-weight: 700; 
             border: 1px solid rgba(0, 255, 157, 0.2);
-            margin-right: 20px;
+            white-space: nowrap; /* Não quebra linha no mobile */
+            margin-right: 10px;
+        }
+        .section-desc-text {
+            margin-left: 20px; margin-bottom: 20px; color:#666; font-size:0.85rem; max-width:800px;
         }
 
-        /* --- TABELAS (ESTILO TERMINAL DE TRADING) --- */
+        /* --- TABELAS --- */
         div[data-testid="stDataFrame"] {
             background-color: #080808 !important;
             border: 1px solid #1f1f1f !important;
             border-radius: 12px;
-            box-shadow: 0 4px 30px rgba(0,0,0,0.5);
         }
-
-        /* Header Tabela */
+        
         div[data-testid="stDataFrame"] div[role="columnheader"] {
             background-color: #0f0f0f !important;
             color: #666 !important;
             font-size: 11px !important;
             font-weight: 800 !important;
             text-transform: uppercase;
-            letter-spacing: 1.5px;
             border-bottom: 1px solid #222 !important;
             text-align: center !important;
             justify-content: center !important;
             display: flex;
         }
-
-        /* Células Tabela */
+        
         div[data-testid="stDataFrame"] div[role="gridcell"] {
             background-color: #080808 !important;
             color: #e0e0e0 !important;
@@ -197,10 +167,10 @@ st.markdown("""
             display: flex;
             justify-content: center !important;
             align-items: center !important;
-            pointer-events: none !important; /* BLOQUEIO TOTAL DE SELEÇÃO */
+            pointer-events: none !important;
         }
         
-        /* Garante centralização interna */
+        /* Centralização Interna */
         div[data-testid="stDataFrame"] div[role="gridcell"] > div {
             display: flex;
             justify-content: center !important;
@@ -209,11 +179,10 @@ st.markdown("""
             text-align: center !important;
         }
 
-        /* Logos Circulares com Borda Neon Hover (mesmo sem clique) */
         div[data-testid="stDataFrame"] img {
             border-radius: 50%;
-            width: 28px !important;
-            height: 28px !important;
+            width: 26px !important;
+            height: 26px !important;
             object-fit: cover;
             border: 1px solid #333;
             background: #fff;
@@ -222,35 +191,66 @@ st.markdown("""
             margin: 0 auto;
         }
 
-        /* INPUT DE PESQUISA (CYBERPUNK) */
+        /* INPUT */
         div[data-baseweb="base-input"] {
             background-color: #0a0a0a !important;
             border: 1px solid #333 !important;
             border-radius: 8px !important;
-            color: white !important;
         }
         div[data-baseweb="base-input"]:focus-within {
             border-color: var(--neon-green) !important;
-            box-shadow: 0 0 15px rgba(0, 255, 157, 0.1) !important;
         }
-        input { color: white !important; font-weight: 600 !important; }
+        input { color: white !important; }
 
         /* FOOTER */
         .legal-footer {
-            margin-top: 100px;
-            padding: 40px;
+            margin-top: 60px;
+            padding: 30px 20px;
             border-top: 1px solid #222;
             text-align: center;
             font-size: 0.7rem;
             color: #444;
             background: #050505;
-            letter-spacing: 0.5px;
-            line-height: 1.6;
+            line-height: 1.5;
         }
+
+        /* ========================================= */
+        /* === MEDIA QUERIES (MOBILE OTIMIZADO) === */
+        /* ========================================= */
+        
+        @media (max-width: 768px) {
+            /* Hero menor no celular */
+            .hero-container { padding: 40px 15px 30px 15px; }
+            .hero-title { font-size: 2.5rem; }
+            .hero-subtitle { font-size: 0.75rem; letter-spacing: 1px; flex-wrap: wrap; }
+            
+            /* Cards de Navegação menores */
+            .glass-card { padding: 15px; margin-bottom: 5px; min-height: 100px; }
+            .card-icon { font-size: 1.4rem; margin-bottom: 5px; }
+            .card-title { font-size: 0.95rem; }
+            .card-desc { display: none; } /* Oculta descrição no mobile p/ economizar espaço */
+            
+            /* Ajuste de Seções */
+            .section-box { padding-left: 10px; margin-top: 40px; }
+            .section-title { font-size: 1.1rem; }
+            .section-badge { font-size: 0.6rem; padding: 3px 8px; }
+            .section-desc-text { margin-left: 10px; font-size: 0.8rem; margin-bottom: 15px; }
+            
+            /* Ajuste Fino das Tabelas Mobile */
+            div[data-testid="stDataFrame"] div[role="columnheader"] { font-size: 10px !important; padding: 8px 4px !important; }
+            div[data-testid="stDataFrame"] div[role="gridcell"] { font-size: 12px !important; padding: 8px 4px !important; }
+            div[data-testid="stDataFrame"] img { width: 22px !important; height: 22px !important; }
+            
+            /* Remove excesso de margem lateral padrão do Streamlit */
+            .block-container { padding-left: 1rem; padding-right: 1rem; }
+        }
+        
+        /* Animação */
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
     </style>
 """, unsafe_allow_html=True)
 
-# ========== 3. LÓGICA (BACKEND) ==========
+# ========== 3. LÓGICA DE DADOS ==========
 
 def get_time_greeting():
     tz = pytz.timezone('America/Sao_Paulo')
@@ -275,7 +275,6 @@ def clean_dy_percentage(x):
 def get_logo_url(ticker):
     if not isinstance(ticker, str): return ""
     clean = ticker.replace('.SA', '').strip().upper()
-    
     sites = {
         'CXSE3': 'caixaseguradora.com.br', 'BBSE3': 'bbseguros.com.br', 'ODPV3': 'odontoprev.com.br',
         'BBAS3': 'bb.com.br', 'ABCB4': 'abcbrasil.com.br', 'ITUB4': 'itau.com.br',
@@ -379,11 +378,11 @@ def load_data():
         except: pass
     return df_radar, df_div
 
-# ========== 4. INTERFACE (UI) ==========
+# ========== 4. LAYOUT UI ==========
 
 greeting, time_now = get_time_greeting()
 
-# Hero Section
+# HERO
 st.markdown(f"""
     <div class='hero-container'>
         <h1 class='hero-title'>DINHEIRO DATA</h1>
@@ -394,34 +393,21 @@ st.markdown(f"""
     </div>
 """, unsafe_allow_html=True)
 
-# Navigation Cards
+# NAVEGAÇÃO
 n1, n2, n3 = st.columns(3)
 with n1:
-    st.markdown("""
-    <a href='#panorama' class='glass-card'>
-        <span class='card-icon'>🌍</span>
-        <span class='card-title'>Panorama Global</span>
-        <span class='card-desc'>Visão Macro em Tempo Real</span>
-    </a>
-    """, unsafe_allow_html=True)
+    st.markdown("""<a href='#panorama' class='glass-card'>
+        <span class='card-icon'>🌍</span><span class='card-title'>Panorama Global</span><span class='card-desc'>Índices & Moedas</span>
+    </a>""", unsafe_allow_html=True)
 with n2:
-    st.markdown("""
-    <a href='#radar-bazin' class='glass-card'>
-        <span class='card-icon'>🎯</span>
-        <span class='card-title'>Radar Bazin</span>
-        <span class='card-desc'>Análise de Preço Teto</span>
-    </a>
-    """, unsafe_allow_html=True)
+    st.markdown("""<a href='#radar-bazin' class='glass-card'>
+        <span class='card-icon'>🎯</span><span class='card-title'>Radar Bazin</span><span class='card-desc'>Preço Teto</span>
+    </a>""", unsafe_allow_html=True)
 with n3:
-    st.markdown("""
-    <a href='#dividendos' class='glass-card'>
-        <span class='card-icon'>💰</span>
-        <span class='card-title'>Dividendos</span>
-        <span class='card-desc'>Projeções de Yield</span>
-    </a>
-    """, unsafe_allow_html=True)
+    st.markdown("""<a href='#dividendos' class='glass-card'>
+        <span class='card-icon'>💰</span><span class='card-title'>Dividendos</span><span class='card-desc'>Yield 2026</span>
+    </a>""", unsafe_allow_html=True)
 
-# Carrega dados
 M = get_market_data()
 df_radar, df_div = load_data()
 
@@ -435,41 +421,31 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 def render_market_table(col, title, df):
-    col.markdown(f"<div style='margin-bottom:12px; font-weight:700; color:#fff; letter-spacing:1px; font-size:0.9rem;'>{title}</div>", unsafe_allow_html=True)
+    col.markdown(f"<div style='margin-bottom:12px; font-weight:700; color:#fff; letter-spacing:1px; font-size:0.85rem;'>{title}</div>", unsafe_allow_html=True)
     if not df.empty:
-        # Styles
         def color_var(val):
             if val > 0: return 'color: #00ff9d; font-weight: 600;'
             if val < 0: return 'color: #ff4d4d; font-weight: 600;'
             return 'color: #666;'
-        
         def fmt_price(val): return "-" if val == 0 else f"{val:.2f}"
-
-        styled = df.style.format({'Preço': fmt_price, 'Var%': '{:+.2f}%'}).map(color_var, subset=['Var%'])
         
+        styled = df.style.format({'Preço': fmt_price, 'Var%': '{:+.2f}%'}).map(color_var, subset=['Var%'])
         col.dataframe(
             styled,
-            column_config={
-                'Ativo': st.column_config.TextColumn("Ativo"),
-                'Preço': st.column_config.TextColumn("Cotação"),
-                'Var%': st.column_config.TextColumn("Var %")
-            },
-            hide_index=True,
-            use_container_width=True
+            column_config={'Ativo': st.column_config.TextColumn("Ativo"), 'Preço': st.column_config.TextColumn("Cotação"), 'Var%': st.column_config.TextColumn("Var %")},
+            hide_index=True, use_container_width=True
         )
 
 r1, r2, r3 = st.columns(3)
 render_market_table(r1, "🇺🇸 ÍNDICES EUA", M['USA'])
 render_market_table(r2, "🇧🇷 ÍNDICES BRASIL", M['BRASIL'])
 render_market_table(r3, "💱 MOEDAS", M['MOEDAS'])
-
 st.write("") 
-
 r4, r5 = st.columns(2)
 render_market_table(r4, "🛢️ COMMODITIES", M['COMMODITIES'])
 render_market_table(r5, "💎 CRIPTOATIVOS", M['CRIPTO'])
 
-# --- RADAR BAZIN ---
+# --- BAZIN ---
 st.markdown("<div id='radar-bazin'></div>", unsafe_allow_html=True)
 count_bazin = len(df_radar[df_radar['MARGEM_VAL'] > 10]) if not df_radar.empty else 0
 
@@ -478,17 +454,15 @@ st.markdown(f"""
     <div class='section-title'>Radar Bazin</div>
     <div class='section-badge'>{count_bazin} OPORTUNIDADES (>10%)</div>
 </div>
-<div style='margin-left:24px; margin-bottom:20px; color:#666; font-size:0.85rem; max-width:800px;'>
+<div class='section-desc-text'>
     O Preço Teto é calculado utilizando a metodologia de Décio Bazin (adaptado à nossa visão), visando identificar ativos que pagam bons dividendos a preços descontados.
 </div>
 """, unsafe_allow_html=True)
 
 if not df_radar.empty:
     search1 = st.text_input("", placeholder="🔍 Ex: BB Seguridade...", key="s1")
-    
     data_show = df_radar.copy()
-    if search1:
-        data_show = data_show[data_show['Ativo'].str.contains(search1, case=False) | data_show['TICKER_F'].str.contains(search1, case=False)]
+    if search1: data_show = data_show[data_show['Ativo'].str.contains(search1, case=False) | data_show['TICKER_F'].str.contains(search1, case=False)]
 
     def style_bazin(v):
         if v > 10: return 'color: #00ff9d; font-weight: 700;'
@@ -496,19 +470,9 @@ if not df_radar.empty:
         return 'color: #666;'
 
     st.dataframe(
-        data_show.style.format({
-            'BAZIN_F': 'R$ {:.2f}', 'PRECO_F': 'R$ {:.2f}', 'MARGEM_VAL': '{:+.1f}%'
-        }).map(style_bazin, subset=['MARGEM_VAL']),
-        column_config={
-            "Logo": st.column_config.ImageColumn(""),
-            "Ativo": st.column_config.TextColumn("Ativo"),
-            "TICKER_F": None,
-            "BAZIN_F": st.column_config.TextColumn("Preço Teto"),
-            "PRECO_F": st.column_config.TextColumn("Cotação"),
-            "MARGEM_VAL": st.column_config.TextColumn("Margem")
-        },
-        hide_index=True,
-        use_container_width=True
+        data_show.style.format({'BAZIN_F': 'R$ {:.2f}', 'PRECO_F': 'R$ {:.2f}', 'MARGEM_VAL': '{:+.1f}%'}).map(style_bazin, subset=['MARGEM_VAL']),
+        column_config={"Logo": st.column_config.ImageColumn(""), "Ativo": st.column_config.TextColumn("Ativo"), "TICKER_F": None, "BAZIN_F": st.column_config.TextColumn("Preço Teto"), "PRECO_F": st.column_config.TextColumn("Cotação"), "MARGEM_VAL": st.column_config.TextColumn("Margem")},
+        hide_index=True, use_container_width=True
     )
 
 # --- DIVIDENDOS ---
@@ -520,34 +484,22 @@ st.markdown(f"""
     <div class='section-title'>Dividendos</div>
     <div class='section-badge'>{count_div} ATIVOS PAGADORES (>8%)</div>
 </div>
-<div style='margin-left:24px; margin-bottom:20px; color:#666; font-size:0.85rem; max-width:800px;'>
+<div class='section-desc-text'>
     Estimativas de rendimento anual (Dividend Yield) para o exercício de 2026, baseadas em projeções de mercado e histórico de pagamentos.
 </div>
 """, unsafe_allow_html=True)
 
 if not df_div.empty:
     search2 = st.text_input("", placeholder="🔍 Ex: BB Seguridade...", key="s2")
-    
     div_show = df_div.copy()
-    if search2:
-        div_show = div_show[div_show['Ativo'].str.contains(search2, case=False) | div_show['TICKER_F'].str.contains(search2, case=False)]
+    if search2: div_show = div_show[div_show['Ativo'].str.contains(search2, case=False) | div_show['TICKER_F'].str.contains(search2, case=False)]
 
-    def style_dy(v):
-        return 'color: #00ff9d; font-weight: 700;' if v > 8 else 'color: #666;'
+    def style_dy(v): return 'color: #00ff9d; font-weight: 700;' if v > 8 else 'color: #666;'
 
     st.dataframe(
-        div_show.style.format({
-            'DPA_F': 'R$ {:.2f}', 'DY_F': '{:.2f}%'
-        }).map(style_dy, subset=['DY_F']),
-        column_config={
-            "Logo": st.column_config.ImageColumn(""),
-            "Ativo": st.column_config.TextColumn("Ativo"),
-            "TICKER_F": None,
-            "DPA_F": st.column_config.TextColumn("Div. / Ação"),
-            "DY_F": st.column_config.TextColumn("Yield Projetado")
-        },
-        hide_index=True,
-        use_container_width=True
+        div_show.style.format({'DPA_F': 'R$ {:.2f}', 'DY_F': '{:.2f}%'}).map(style_dy, subset=['DY_F']),
+        column_config={"Logo": st.column_config.ImageColumn(""), "Ativo": st.column_config.TextColumn("Ativo"), "TICKER_F": None, "DPA_F": st.column_config.TextColumn("Div. / Ação"), "DY_F": st.column_config.TextColumn("Yield Projetado")},
+        hide_index=True, use_container_width=True
     )
 
 # --- FOOTER ---
