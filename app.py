@@ -11,10 +11,10 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# --- 2. CSS DARK MODE & DESIGN ---
+# --- 2. CSS DARK MODE & CENTRALIZAÇÃO ---
 st.markdown("""
     <style>
-        /* Fundo Escuro */
+        /* Fundo Escuro Global */
         .stApp {
             background-color: #0e1117;
             color: #e0e0e0;
@@ -50,24 +50,23 @@ st.markdown("""
             text-transform: uppercase;
             font-size: 0.85rem;
             border-bottom: 1px solid #444;
-            text-align: center;
+            text-align: center; 
         }
         
-        /* Células Centralizadas (Hack CSS) */
+        /* Centralizar Conteúdo das Células (Via CSS para não dar erro no Python) */
         div[data-testid="stDataFrame"] div[role="gridcell"] {
-            color: #e0e0e0;
-            font-size: 0.95rem;
             display: flex;
-            justify-content: center; /* Centraliza horizontalmente */
-            align-items: center; /* Centraliza verticalmente */
+            justify-content: center;
+            align-items: center;
+            text-align: center;
         }
     </style>
 """, unsafe_allow_html=True)
 
-# --- 3. FUNÇÕES DE DADOS ---
+# --- 3. FUNÇÕES DE TRATAMENTO ---
 
 def clean_currency(x):
-    """Limpa formatação financeira padrão"""
+    """Limpa formatação financeira"""
     if isinstance(x, (int, float)): return float(x)
     if isinstance(x, str):
         clean = x.replace('R$', '').replace('.', '').replace(',', '.').replace('%', '').strip()
@@ -76,23 +75,23 @@ def clean_currency(x):
     return 0.0
 
 def clean_dy_percentage(x):
-    """Corrigi DY decimal (0.11 -> 11.0)"""
+    """Corrige DY decimal (0.11 -> 11.0%)"""
     val = clean_currency(x)
     if val > 0 and val < 1.0:
         return val * 100
     return val
 
 def get_logo_url(ticker):
-    """Busca logos de Fontes Diferentes"""
+    """Busca logos"""
     if not isinstance(ticker, str): return ""
     clean = ticker.replace('.SA', '').strip().upper()
     
-    # Se for Cripto famosa, usa CoinGecko
+    # Cripto
     if clean in ['BTC', 'BITCOIN']: return "https://assets.coingecko.com/coins/images/1/small/bitcoin.png"
     if clean in ['ETH', 'ETHEREUM']: return "https://assets.coingecko.com/coins/images/279/small/ethereum.png"
     if clean in ['SOL', 'SOLANA']: return "https://assets.coingecko.com/coins/images/4128/small/solana.png"
     
-    # Ações B3 (Repositório Fintz é o mais completo)
+    # Ações B3
     return f"https://raw.githubusercontent.com/thefintz/icon-project/master/stock_logos/{clean}.png"
 
 @st.cache_data(ttl=60)
@@ -139,6 +138,7 @@ def get_full_market_data():
                 rows.append({"Nome": name, "Preço": price, "Var %": pct, "Var R$": delta})
         except: pass
         
+        # Preenchimento para garantir 6 linhas
         while len(rows) < 6:
             rows.append({"Nome": "-", "Preço": 0, "Var %": 0, "Var R$": 0})
             
@@ -167,7 +167,7 @@ st.markdown("---")
 
 M = get_full_market_data()
 
-# --- SEÇÃO 1: PANORAMA (3 COLUNAS) ---
+# --- SEÇÃO 1: PANORAMA ---
 st.subheader("🌍 Panorama de Mercado")
 col1, col2, col3 = st.columns(3)
 
@@ -194,7 +194,7 @@ show_market_list(col3, "🏭 Top Brasil", M.get('TOP_BRASIL', pd.DataFrame()))
 
 st.divider()
 
-# --- 5. PROCESSAMENTO DE DADOS ---
+# --- 5. LEITURA DE ARQUIVO ---
 def load_user_file():
     uploaded = st.sidebar.file_uploader("📂 Atualizar Dados (.xlsx ou .csv)", type=['xlsx', 'csv'])
     if uploaded:
@@ -235,7 +235,7 @@ if file_data is not None:
                 target_df['TICKER_F'] = target_df[col_ticker].astype(str).str.strip().str.upper()
                 target_df['BAZIN_F'] = target_df[col_bazin].apply(clean_currency)
                 
-                # CORREÇÃO DY
+                # DY CORRIGIDO AQUI
                 if col_dy: target_df['DY_F'] = target_df[col_dy].apply(clean_dy_percentage)
                 else: target_df['DY_F'] = 0.0
                 
@@ -262,46 +262,45 @@ if file_data is not None:
                 df_div = df_div[['LOGO_F', 'NOME_F', 'DPA_F', 'DY_F']]
                 df_div = df_div.sort_values('DY_F', ascending=False)
     except Exception as e:
-        st.error(f"Erro ao ler arquivo: {e}")
+        st.error(f"Erro ao ler dados: {e}")
 
-# --- 6. RADAR BAZIN ---
+# --- 6. RADAR BAZIN (SEM ALIGNMENT PARA EVITAR ERRO) ---
 st.subheader("🎯 Radar de Preço Justo (Bazin)")
 
 if not df_radar.empty:
     st.dataframe(
         df_radar,
         column_config={
-            "LOGO_F": st.column_config.ImageColumn("Logo", width="small"), # Alinhamento removido (Correção erro)
-            "NOME_F": st.column_config.TextColumn("Ativo", width="medium", alignment="center"),
-            "BAZIN_F": st.column_config.NumberColumn("Preço Justo (Teto)", format="R$ %.2f", alignment="center"),
-            "PRECO_F": st.column_config.NumberColumn("Cotação Atual", format="R$ %.2f", alignment="center"),
+            "LOGO_F": st.column_config.ImageColumn("Logo", width="small"),
+            "NOME_F": st.column_config.TextColumn("Ativo", width="medium"),
+            "BAZIN_F": st.column_config.NumberColumn("Preço Justo (Teto)", format="R$ %.2f"),
+            "PRECO_F": st.column_config.NumberColumn("Cotação Atual", format="R$ %.2f"),
             "MARGEM_F": st.column_config.ProgressColumn(
                 "Margem de Segurança",
                 format="%.1f%%",
                 min_value=-50, max_value=50,
-                width="medium",
-                alignment="center"
+                width="medium"
             )
         },
         hide_index=True,
         use_container_width=True
     )
 else:
-    st.info("Carregando inteligência de mercado...")
+    st.info("Aguardando carregamento de dados...")
 
 st.divider()
 
-# --- 7. DIVIDENDOS ---
+# --- 7. DIVIDENDOS (SEM ALIGNMENT PARA EVITAR ERRO) ---
 st.subheader("💰 Projeção de Renda Passiva")
 
 if not df_div.empty:
     st.dataframe(
         df_div,
         column_config={
-            "LOGO_F": st.column_config.ImageColumn("Logo", width="small"), # Alinhamento removido (Correção erro)
-            "NOME_F": st.column_config.TextColumn("Ativo", width="medium", alignment="center"),
-            "DPA_F": st.column_config.NumberColumn("Dividendo por Ação", format="R$ %.2f", alignment="center"),
-            "DY_F": st.column_config.NumberColumn("Dividend Yield", format="%.2f %%", alignment="center"),
+            "LOGO_F": st.column_config.ImageColumn("Logo", width="small"),
+            "NOME_F": st.column_config.TextColumn("Ativo", width="medium"),
+            "DPA_F": st.column_config.NumberColumn("Dividendo por Ação", format="R$ %.2f"),
+            "DY_F": st.column_config.NumberColumn("Dividend Yield", format="%.2f %%"),
         },
         hide_index=True,
         use_container_width=True
