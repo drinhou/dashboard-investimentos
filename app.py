@@ -13,7 +13,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# ========== 2. CSS RESPONSIVO CORRIGIDO ==========
+# ========== 2. CSS "ONYX" (COM CORREÇÃO MOBILE ROBUSTA) ==========
 st.markdown("""
     <style>
         /* IMPORTAR FONTE */
@@ -28,7 +28,7 @@ st.markdown("""
             --text-main: #ffffff;
         }
 
-        /* --- RESET & BASE --- */
+        /* --- RESET GLOBAL --- */
         html, body, [class*="css"] {
             font-family: 'Inter', sans-serif;
             background-color: var(--bg-deep);
@@ -36,8 +36,10 @@ st.markdown("""
             scroll-behavior: smooth !important;
         }
         
+        /* Ocultar itens padrão */
         #MainMenu, footer, header { visibility: hidden; }
         [data-testid="stElementToolbar"] { display: none !important; }
+        .stMarkdown a.anchor-link { display: none !important; } /* Remove ícone de corrente */
         .block-container { padding-top: 1rem; padding-bottom: 3rem; }
 
         /* --- HEADER HERO --- */
@@ -108,22 +110,22 @@ st.markdown("""
         .card-title { font-size: 1.1rem; font-weight: 700; color: #fff; display: block; margin-bottom: 4px; }
         .card-desc { font-size: 0.8rem; color: #777; display: block; }
 
-        /* --- TÍTULOS DE SEÇÃO (FLEXBOX) --- */
+        /* --- TÍTULOS DE SEÇÃO (SOLUÇÃO DESKTOP) --- */
         .section-box {
             margin-top: 50px;
             margin-bottom: 20px;
             padding-left: 15px;
+            padding-right: 15px; /* Espaço na direita */
             border-left: 4px solid var(--neon-green);
             background: linear-gradient(90deg, rgba(0, 255, 157, 0.05) 0%, transparent 100%);
             display: flex;
-            align-items: center;
-            justify-content: space-between; /* Padrão Desktop: Lado a Lado */
+            align-items: center; /* Alinha verticalmente no centro */
+            justify-content: space-between; /* Título na esquerda, Badge na direita */
             border-radius: 0 12px 12px 0;
             padding-top: 12px;
             padding-bottom: 12px;
-            padding-right: 15px;
         }
-        .section-title { font-size: 1.4rem; font-weight: 800; color: #fff; text-transform: uppercase; }
+        .section-title { font-size: 1.4rem; font-weight: 800; color: #fff; text-transform: uppercase; margin: 0; }
         .section-badge { 
             background: rgba(0, 255, 157, 0.1); 
             color: var(--neon-green); 
@@ -135,7 +137,7 @@ st.markdown("""
             white-space: nowrap;
         }
         .section-desc-text {
-            margin-left: 20px; margin-bottom: 20px; color:#666; font-size:0.85rem; max-width:800px;
+            margin-left: 20px; margin-bottom: 20px; color:#666; font-size: 0.85rem; max-width: 800px;
         }
 
         /* --- TABELAS --- */
@@ -164,7 +166,7 @@ st.markdown("""
             display: flex;
             justify-content: center !important;
             align-items: center !important;
-            pointer-events: none !important;
+            pointer-events: none !important; /* Bloqueia clique */
         }
         div[data-testid="stDataFrame"] div[role="gridcell"] > div {
             display: flex;
@@ -183,6 +185,23 @@ st.markdown("""
             padding: 1px;
             display: block;
             margin: 0 auto;
+        }
+
+        /* --- FAQ STYLING --- */
+        .streamlit-expanderHeader {
+            background-color: rgba(20, 20, 20, 0.4) !important;
+            border: 1px solid var(--glass-border) !important;
+            color: #fff !important;
+            font-family: 'Inter', sans-serif !important;
+        }
+        .streamlit-expanderHeader:hover {
+            border-color: var(--neon-green) !important;
+            color: var(--neon-green) !important;
+        }
+        .streamlit-expanderContent {
+            color: #999 !important;
+            border: none !important;
+            padding-left: 20px !important;
         }
 
         /* INPUT */
@@ -208,12 +227,11 @@ st.markdown("""
             line-height: 1.5;
         }
 
-        /* ========================================= */
-        /* === CORREÇÃO MOBILE (O PULO DO GATO) === */
-        /* ========================================= */
-        
+        /* ================================================== */
+        /* === CORREÇÃO MOBILE (TITULOS E BADGES) === */
+        /* ================================================== */
         @media (max-width: 768px) {
-            /* 1. Hero menor */
+            /* 1. Hero Compacto */
             .hero-container { padding: 40px 15px 20px 15px; }
             .hero-title { font-size: 2.2rem; }
             .hero-subtitle { font-size: 0.7rem; letter-spacing: 1px; flex-wrap: wrap; }
@@ -224,24 +242,30 @@ st.markdown("""
             .card-title { font-size: 0.9rem; }
             .card-desc { display: none; }
             
-            /* 3. CORREÇÃO DA CAIXA DE TÍTULO (O PROBLEMA DA FOTO) */
+            /* 3. CORREÇÃO DA "ESQUISITICE" NOS TÍTULOS */
+            /* Transforma a linha em coluna para não sobrepor */
             .section-box { 
-                flex-direction: column; /* Empilha um em cima do outro */
-                align-items: flex-start; /* Alinha à esquerda */
-                gap: 10px; /* Espaço entre título e badge */
-                padding-right: 10px;
-                margin-top: 30px;
+                flex-direction: column !important; /* Um em cima do outro */
+                align-items: flex-start !important; /* Alinha na esquerda */
+                gap: 8px; /* Espaço entre título e badge */
+                padding-bottom: 15px; /* Mais espaço embaixo */
+                height: auto; /* Altura flexível */
             }
+            
             .section-title { 
-                font-size: 1.2rem; /* Fonte um pouco menor */
+                font-size: 1.2rem; 
+                line-height: 1.2;
             }
+            
             .section-badge { 
-                font-size: 0.7rem; 
-                padding: 4px 10px; 
-                align-self: flex-start; /* Garante que fique na esquerda */
+                align-self: flex-start; /* Força badge p/ esquerda */
+                font-size: 0.65rem; 
+                padding: 4px 8px;
             }
+            
             .section-desc-text { 
                 margin-left: 10px; 
+                margin-top: 10px;
                 font-size: 0.8rem; 
                 margin-bottom: 15px; 
             }
@@ -509,6 +533,42 @@ if not df_div.empty:
         column_config={"Logo": st.column_config.ImageColumn(""), "Ativo": st.column_config.TextColumn("Ativo"), "TICKER_F": None, "DPA_F": st.column_config.TextColumn("Div. / Ação"), "DY_F": st.column_config.TextColumn("Yield Projetado")},
         hide_index=True, use_container_width=True
     )
+
+# --- FAQ (DUVIDAS) ---
+st.markdown("<div style='margin-top: 80px;'></div>", unsafe_allow_html=True)
+st.markdown("""
+<div class='section-box'>
+    <div class='section-title'>Dúvidas Frequentes</div>
+    <div class='section-badge'>FAQ</div>
+</div>
+""", unsafe_allow_html=True)
+
+faq_data = [
+    {
+        "q": "Como é calculado o Preço Teto (Método Bazin)?",
+        "a": "Utilizamos a metodologia clássica de Décio Bazin. O cálculo baseia-se em dividir o dividendo projetado (ou médio) por uma taxa de retorno mínima exigida. Se o resultado for superior à cotação atual, o ativo é considerado descontado segundo este modelo."
+    },
+    {
+        "q": "De onde vêm os dados apresentados?",
+        "a": "As cotações (preço atual) e variações diárias são extraídas em tempo real via API do Yahoo Finance (yfinance). Os dados fundamentalistas (projeções de dividendos e DPA) são processados a partir da nossa base de dados analítica interna."
+    },
+    {
+        "q": "O que significa a 'Margem de Segurança'?",
+        "a": "É a diferença percentual entre o Preço Teto calculado e a Cotação de mercado atual. Uma margem positiva (ex: +15%) indica que o ativo está sendo negociado abaixo do seu preço justo teórico, oferecendo uma 'gordura' de segurança para o investidor."
+    },
+    {
+        "q": "Como são feitas as projeções de Dividendos para 2026?",
+        "a": "As projeções baseiam-se em uma análise conservadora que considera o histórico de *payout* da empresa, a expectativa de lucros futuros e relatórios de mercado. Trata-se de uma estimativa, não de uma garantia de pagamento."
+    },
+    {
+        "q": "Por que alguns ativos aparecem com traço (-) na cotação?",
+        "a": "Isso pode ocorrer momentaneamente caso a API de dados não consiga retornar o valor em tempo real ou se o mercado estiver fechado/em leilão. O sistema é programado para não exibir valores incorretos (como R$ 0,00) nessas situações."
+    }
+]
+
+for item in faq_data:
+    with st.expander(f"📌 {item['q']}"):
+        st.markdown(item['a'])
 
 # --- FOOTER ---
 st.markdown("""
