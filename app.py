@@ -2,16 +2,17 @@ import streamlit as st
 import pandas as pd
 import yfinance as yf
 import os
+import datetime
 
 # --- 1. CONFIGURAÇÃO DA PÁGINA (WIDE & DARK) ---
 st.set_page_config(
     page_title="Dinheiro Data",
-    page_icon="💸",
+    page_icon="🦅",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# --- 2. CSS AVANÇADO (UX FINANCEIRO) ---
+# --- 2. CSS AVANÇADO (UX PREMIUM) ---
 st.markdown("""
     <style>
         /* Fundo Geral */
@@ -20,45 +21,67 @@ st.markdown("""
         /* Fontes */
         * { font-family: 'Segoe UI', 'Roboto', sans-serif; }
         
-        /* Remove padding excessivo do topo */
-        .block-container { padding-top: 2rem; padding-bottom: 2rem; }
-
-        /* HEADER DAS TABELAS */
+        /* HEADER DAS TABELAS (Centralizado) */
         div[data-testid="stDataFrame"] div[role="columnheader"] {
             background-color: #1f2937;
-            color: #9ca3af; /* Cinza claro */
-            font-size: 12px;
+            color: #9ca3af;
+            font-size: 13px;
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.5px;
             border-bottom: 2px solid #374151;
+            text-align: center !important;
+            justify-content: center !important;
         }
 
-        /* LINHAS DAS TABELAS */
-        div[data-testid="stDataFrame"] div[role="row"] {
-            background-color: #111827; /* Fundo quase preto */
-            color: #e5e7eb;
+        /* CÉLULAS DAS TABELAS (Centralizadas) */
+        div[data-testid="stDataFrame"] div[role="gridcell"] {
+            display: flex;
+            justify-content: center !important; /* Centraliza Horizontalmente */
+            align-items: center !important;    /* Centraliza Verticalmente */
+            text-align: center !important;
             font-size: 14px;
-            border-bottom: 1px solid #1f2937;
+            font-weight: 500;
+        }
+
+        /* LOGOS CIRCULARES */
+        div[data-testid="stDataFrame"] div[role="gridcell"] img {
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #374151; /* Borda sutil */
+            padding: 2px;
+            background-color: white;
+        }
+
+        /* KPI Cards (Métricas no topo) */
+        div[data-testid="stMetric"] {
+            background-color: #111827;
+            border: 1px solid #374151;
+            border-radius: 10px;
+            padding: 10px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
         
-        /* Hover nas linhas */
-        div[data-testid="stDataFrame"] div[role="row"]:hover {
-            background-color: #1f2937;
-        }
-
-        /* Títulos de Seção */
-        h3 {
-            border-left: 4px solid #3b82f6; /* Barra azul ao lado do título */
-            padding-left: 10px;
-            margin-top: 20px;
-            margin-bottom: 20px;
-            font-weight: 600;
+        /* Títulos com destaque */
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #f3f4f6;
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            border-left: 5px solid #3b82f6;
+            padding-left: 15px;
         }
     </style>
 """, unsafe_allow_html=True)
 
-# --- 3. FUNÇÕES AUXILIARES ---
+# --- 3. FUNÇÕES ---
+
+def get_greeting():
+    hour = datetime.datetime.now().hour
+    if 5 <= hour < 12: return "Bom dia"
+    elif 12 <= hour < 18: return "Boa tarde"
+    else: return "Boa noite"
 
 def clean_currency(x):
     if isinstance(x, (int, float)): return float(x)
@@ -74,11 +97,11 @@ def clean_dy_percentage(x):
     return val
 
 def get_logo_url(ticker):
-    """Busca Favicon baseada na lista VIP"""
+    """Busca Favicon (Lista VIP + Google)"""
     if not isinstance(ticker, str): return ""
     clean = ticker.replace('.SA', '').strip().upper()
     
-    # LISTA VIP (Seus Sites)
+    # LISTA VIP (Seus Sites + Ajustes)
     meus_sites = {
         'CXSE3': 'caixaseguradora.com.br', 'BBSE3': 'bbseguros.com.br', 'ODPV3': 'odontoprev.com.br',
         'BBAS3': 'bb.com.br', 'ABCB4': 'abcbrasil.com.br', 'ITUB4': 'itau.com.br',
@@ -91,19 +114,19 @@ def get_logo_url(ticker):
     }
 
     if clean in meus_sites:
-        return f"https://www.google.com/s2/favicons?domain={meus_sites[clean]}&sz=64"
+        return f"https://www.google.com/s2/favicons?domain={meus_sites[clean]}&sz=128"
     
     # Cripto
     if clean in ['BTC', 'BITCOIN']: return "https://assets.coingecko.com/coins/images/1/small/bitcoin.png"
     if clean in ['ETH', 'ETHEREUM']: return "https://assets.coingecko.com/coins/images/279/small/ethereum.png"
     if clean in ['SOL', 'SOLANA']: return "https://assets.coingecko.com/coins/images/4128/small/solana.png"
 
-    # Genérico
+    # Fallback
     return f"https://cdn.jsdelivr.net/gh/thefintz/icon-project@master/stock_logos/{clean}.png"
 
 @st.cache_data(ttl=60)
 def get_market_data_styled():
-    """Busca dados e prepara DataFrame com cores"""
+    """Busca dados de mercado"""
     lists = {
         'INDICES': {'IBOVESPA': '^BVSP', 'IFIX': 'IFIX.SA', 'S&P 500': '^GSPC', 'NASDAQ': '^IXIC', 'DÓLAR': 'BRL=X', 'EURO': 'EURBRL=X'},
         'CRIPTO': {'BITCOIN': 'BTC-USD', 'ETHEREUM': 'ETH-USD', 'SOLANA': 'SOL-USD', 'OURO': 'GC=F', 'PETRÓLEO': 'BZ=F', 'PRATA': 'SI=F'},
@@ -111,7 +134,6 @@ def get_market_data_styled():
     }
     
     final_dfs = {}
-    
     for cat, items in lists.items():
         rows = []
         try:
@@ -125,24 +147,13 @@ def get_market_data_styled():
                         delta = curr - prev
                         pct = (delta / prev) * 100
                         rows.append([name, curr, pct, delta])
-                    else:
-                        rows.append([name, 0.0, 0.0, 0.0])
+                    else: rows.append([name, 0.0, 0.0, 0.0])
                 except: rows.append([name, 0.0, 0.0, 0.0])
         except: pass
-        
         while len(rows) < 6: rows.append(["-", 0.0, 0.0, 0.0])
-        
-        df = pd.DataFrame(rows, columns=["Ativo", "Preço", "Var%", "Var$"])
-        final_dfs[cat] = df
+        final_dfs[cat] = pd.DataFrame(rows, columns=["Ativo", "Preço", "Var%", "Var$"])
         
     return final_dfs
-
-# Função de Estilo (Cores Condicionais)
-def color_surprises(val):
-    if isinstance(val, (int, float)):
-        color = '#4ade80' if val > 0 else '#f87171' if val < 0 else '#9ca3af'
-        return f'color: {color}; font-weight: bold;'
-    return ''
 
 @st.cache_data(ttl=300)
 def get_br_prices(ticker_list):
@@ -159,39 +170,45 @@ def get_br_prices(ticker_list):
 
 # --- 4. APP PRINCIPAL ---
 
-st.title("💸 Dinheiro Data")
+# Título Dinâmico
+st.markdown(f"<h1 style='text-align: center; color: #fff; margin-bottom: 30px;'>🦅 {get_greeting()}, Investidor</h1>", unsafe_allow_html=True)
 
 M = get_market_data_styled()
 
-# --- SEÇÃO 1: PANORAMA (COM STYLING PANDAS) ---
-st.subheader("🌍 Panorama de Mercado")
+# --- SEÇÃO 1: PANORAMA ---
+st.markdown("<div class='section-title'>🌍 Panorama Global</div>", unsafe_allow_html=True)
 c1, c2, c3 = st.columns(3)
 
-def show_styled_table(col, title, df):
-    col.write(f"**{title}**")
+def show_styled_table(col, df):
     if not df.empty:
-        # Aplica cores nas colunas de variação
+        # Função para pintar o fundo da célula (Melhor visualização)
+        def color_bg(val):
+            if isinstance(val, (int, float)):
+                if val > 0: return 'background-color: #064e3b; color: #4ade80;' # Verde escuro fundo, verde claro texto
+                if val < 0: return 'background-color: #450a0a; color: #f87171;' # Vermelho escuro fundo, vermelho claro texto
+            return ''
+            
         styled_df = df.style.format({
             "Preço": "{:.2f}",
             "Var%": "{:+.2f}%",
             "Var$": "{:+.2f}"
-        }).map(color_surprises, subset=['Var%', 'Var$'])
+        }).map(color_bg, subset=['Var%', 'Var$'])
         
         col.dataframe(
             styled_df,
             column_config={
-                "Ativo": st.column_config.TextColumn("Ativo", width="medium"),
+                "Ativo": st.column_config.TextColumn("Ativo", width="small"),
                 "Preço": st.column_config.NumberColumn("Cotação", width="small"),
-                "Var%": st.column_config.TextColumn("Var %", width="small"), # TextColumn para aceitar cor
+                "Var%": st.column_config.TextColumn("Var %", width="small"),
                 "Var$": st.column_config.TextColumn("Var R$", width="small")
             },
             hide_index=True,
             use_container_width=True
         )
 
-show_styled_table(c1, "📊 Índices & Moedas", M['INDICES'])
-show_styled_table(c2, "💎 Cripto & Commodities", M['CRIPTO'])
-show_styled_table(c3, "🏭 Top Brasil", M['TOP'])
+with c1: st.write("📊 **Índices & Moedas**"); show_styled_table(c1, M['INDICES'])
+with c2: st.write("💎 **Cripto & Commodities**"); show_styled_table(c2, M['CRIPTO'])
+with c3: st.write("🏭 **Top Brasil**"); show_styled_table(c3, M['TOP'])
 
 st.divider()
 
@@ -232,54 +249,45 @@ if file_data is not None:
                 target_df['DY_F'] = target_df[c_dy].apply(clean_dy_percentage) if c_dy else 0.0
                 target_df['DPA_F'] = target_df[c_dpa].apply(clean_currency) if c_dpa else 0.0
                 
-                # Preços e Margem
                 prices = get_br_prices(target_df['TICKER_F'].unique().tolist())
                 target_df['PRECO_F'] = target_df['TICKER_F'].map(prices).fillna(0)
                 
                 target_df['MARGEM_VAL'] = target_df.apply(lambda x: ((x['BAZIN_F'] - x['PRECO_F']) / x['PRECO_F'] * 100) if x['PRECO_F'] > 0 else -999, axis=1)
                 
-                # Logo e Nome
                 target_df['Logo'] = target_df['TICKER_F'].apply(get_logo_url)
                 target_df['Ativo'] = target_df[c_emp] if c_emp else target_df['TICKER_F']
                 
-                # --- PREPARAÇÃO DO RADAR ---
-                df_radar = target_df[target_df['BAZIN_F'] > 0].copy()
-                df_radar = df_radar[['Logo', 'Ativo', 'BAZIN_F', 'PRECO_F', 'MARGEM_VAL']]
-                df_radar = df_radar.sort_values('MARGEM_VAL', ascending=False)
+                df_radar = target_df[target_df['BAZIN_F'] > 0][['Logo', 'Ativo', 'BAZIN_F', 'PRECO_F', 'MARGEM_VAL']].sort_values('MARGEM_VAL', ascending=False)
+                df_div = target_df[target_df['DY_F'] > 0][['Logo', 'Ativo', 'DPA_F', 'DY_F']].sort_values('DY_F', ascending=False)
+    except: pass
 
-                # --- PREPARAÇÃO DIVIDENDOS ---
-                df_div = target_df[target_df['DY_F'] > 0].copy()
-                df_div = df_div[['Logo', 'Ativo', 'DPA_F', 'DY_F']]
-                df_div = df_div.sort_values('DY_F', ascending=False)
-                
-    except Exception as e: st.error(f"Erro: {e}")
+# --- 6. VISUALIZAÇÃO COM STYLING ---
 
-# --- 6. VISUALIZAÇÃO COM PANDAS STYLING (VERDE/VERMELHO) ---
-
-st.subheader("🎯 Radar de Preço Justo (Bazin)")
+# KPI RÁPIDO
+if not df_radar.empty:
+    oportunidades = len(df_radar[df_radar['MARGEM_VAL'] > 10])
+    st.markdown(f"<div class='section-title'>🎯 Radar de Oportunidades <span style='font-size: 0.8em; color: #4ade80; margin-left: 10px;'>({oportunidades} Ativos com Margem > 10%)</span></div>", unsafe_allow_html=True)
+else:
+    st.markdown("<div class='section-title'>🎯 Radar de Oportunidades</div>", unsafe_allow_html=True)
 
 if not df_radar.empty:
-    # Formatação Visual da Margem
+    # Cores Texto Margem
     def style_margin(v):
         color = '#4ade80' if v > 10 else '#facc15' if v > 0 else '#f87171'
-        weight = 'bold' if v > 10 else 'normal'
-        return f'color: {color}; font-weight: {weight};'
+        return f'color: {color}; font-weight: bold;'
 
-    # Aplica estilo
     styled_radar = df_radar.style.format({
-        "BAZIN_F": "R$ {:.2f}",
-        "PRECO_F": "R$ {:.2f}",
-        "MARGEM_VAL": "{:+.1f}%"
+        "BAZIN_F": "R$ {:.2f}", "PRECO_F": "R$ {:.2f}", "MARGEM_VAL": "{:+.1f}%"
     }).map(style_margin, subset=['MARGEM_VAL'])
 
     st.dataframe(
         styled_radar,
         column_config={
-            "Logo": st.column_config.ImageColumn("", width="small"), # Sem título para "colar"
-            "Ativo": st.column_config.TextColumn("Ativo", width="large"),
-            "BAZIN_F": st.column_config.NumberColumn("Preço Teto", width="medium"),
-            "PRECO_F": st.column_config.NumberColumn("Cotação", width="medium"),
-            "MARGEM_VAL": st.column_config.TextColumn("Margem", width="medium"), # TextColumn aceita cor
+            "Logo": st.column_config.ImageColumn("", width="small"), 
+            "Ativo": st.column_config.TextColumn("Ativo", width="large"), # Large para nome
+            "BAZIN_F": st.column_config.NumberColumn("Preço Teto", width="small"), # Small para números
+            "PRECO_F": st.column_config.NumberColumn("Cotação", width="small"),
+            "MARGEM_VAL": st.column_config.TextColumn("Margem", width="small"),
         },
         hide_index=True,
         use_container_width=True
@@ -287,25 +295,23 @@ if not df_radar.empty:
 
 st.divider()
 
-st.subheader("💰 Projeção de Renda Passiva")
+st.markdown("<div class='section-title'>💰 Projeção de Renda Passiva</div>", unsafe_allow_html=True)
 
 if not df_div.empty:
-    # Estilo DY
     def style_dy(v):
-        return 'color: #4ade80; font-weight: bold;' if v > 6 else ''
+        return 'color: #4ade80; font-weight: bold;' if v > 8 else '' # Destaque DY > 8%
 
     styled_div = df_div.style.format({
-        "DPA_F": "R$ {:.2f}",
-        "DY_F": "{:.2f}%"
+        "DPA_F": "R$ {:.2f}", "DY_F": "{:.2f}%"
     }).map(style_dy, subset=['DY_F'])
 
     st.dataframe(
         styled_div,
         column_config={
-            "Logo": st.column_config.ImageColumn("", width="small"),
+            "Logo": st.column_config.ImageColumn("", width="small"), # Simetria mantida
             "Ativo": st.column_config.TextColumn("Ativo", width="large"),
-            "DPA_F": st.column_config.NumberColumn("Div. / Ação", width="medium"),
-            "DY_F": st.column_config.TextColumn("Yield Projetado", width="medium"),
+            "DPA_F": st.column_config.NumberColumn("Div. / Ação", width="small"),
+            "DY_F": st.column_config.TextColumn("Yield Projetado", width="small"),
         },
         hide_index=True,
         use_container_width=True
