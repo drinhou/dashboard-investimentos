@@ -11,84 +11,58 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# --- 2. CSS DARK MODE PROFISSIONAL ---
+# --- 2. CSS DARK MODE & ALINHAMENTO ---
 st.markdown("""
     <style>
-        /* Fundo Totalmente Escuro */
+        /* Fundo Totalmente Escuro e Fonte */
         .stApp {
             background-color: #0e1117;
-            color: #fafafa;
+            color: #e0e0e0;
         }
-        
-        /* Fontes e Textos */
-        h1, h2, h3, p, div, span, label {
-            font-family: 'Segoe UI', sans-serif;
+        h1, h2, h3, h4, p, div, span, label {
+            font-family: 'Segoe UI', Helvetica, sans-serif;
             color: #e0e0e0 !important;
         }
 
-        /* CARD DE ÍNDICE (SIMÉTRICO E ELEGANTE) */
-        .index-card {
-            background-color: #1e2129;
+        /* CARDS DE DESTAQUE (Topo) */
+        div[data-testid="stMetric"] {
+            background-color: #1e2129 !important;
+            border: 1px solid #2d333b !important;
             border-radius: 8px;
-            padding: 20px 10px; /* Mais espaçamento interno */
-            margin-bottom: 15px;
-            border: 1px solid #2d333b;
+            padding: 15px;
             text-align: center;
-            height: 100%; /* Força altura igual */
-            transition: transform 0.2s;
         }
-        .index-card:hover {
-            border-color: #4b5563;
-        }
-        .index-name {
-            font-size: 0.85rem;
-            color: #9ca3af !important;
-            text-transform: uppercase;
-            font-weight: 700;
-            margin-bottom: 8px;
-            letter-spacing: 0.5px;
-        }
-        .index-price {
-            font-size: 1.5rem;
-            color: #ffffff !important;
-            font-weight: 700;
-        }
-        .index-delta-pos { color: #4ade80 !important; font-size: 0.9rem; font-weight: 600; }
-        .index-delta-neg { color: #f87171 !important; font-size: 0.9rem; font-weight: 600; }
+        div[data-testid="stMetricLabel"] p { color: #9ca3af !important; font-weight: 600; }
+        div[data-testid="stMetricValue"] div { color: #ffffff !important; font-weight: 700; }
 
-        /* TABELAS DARK */
+        /* TABELAS (Design Limpo e Centralizado) */
         div[data-testid="stDataFrame"] {
-            background-color: #1e2129;
+            background-color: #1e2129 !important;
             border: 1px solid #2d333b;
             border-radius: 8px;
-            text-align: center; /* Força alinhamento geral */
         }
         
-        /* Cabeçalho da Tabela */
+        /* Centralizar Cabeçalhos */
         div[data-testid="stDataFrame"] div[role="columnheader"] {
             background-color: #262730;
             color: white;
+            justify-content: center;
             font-weight: bold;
-            justify-content: center; /* Centraliza Headers */
+            border-bottom: 1px solid #444;
         }
         
-        /* Células da Tabela */
+        /* Centralizar Células */
         div[data-testid="stDataFrame"] div[role="gridcell"] {
-            justify-content: center; /* Centraliza Conteúdo */
-        }
-        
-        /* Sidebar */
-        section[data-testid="stSidebar"] {
-            background-color: #161920;
-            border-right: 1px solid #2d333b;
+            justify-content: center;
+            color: #e0e0e0;
         }
     </style>
 """, unsafe_allow_html=True)
 
-# --- 3. FUNÇÕES ---
+# --- 3. FUNÇÕES DE DADOS ---
 
 def clean_currency(x):
-    """Limpa formatação financeira R$ / %"""
+    """Limpa formatação financeira"""
     if isinstance(x, (int, float)): return float(x)
     if isinstance(x, str):
         clean = x.replace('R$', '').replace('.', '').replace(',', '.').replace('%', '').strip()
@@ -97,42 +71,99 @@ def clean_currency(x):
     return 0.0
 
 def get_logo_url(ticker):
-    """Busca logo real no repositório"""
+    """
+    Busca logo. Tenta repositório brasileiro confiável.
+    Se não achar, retorna URL vazia (o Streamlit lida bem com isso).
+    """
     if not isinstance(ticker, str): return ""
+    # Limpa o ticker (remove .SA e espaços)
     clean = ticker.replace('.SA', '').strip().upper()
+    
+    # Repositório de ícones financeiros
     return f"https://raw.githubusercontent.com/thefintz/icon-project/master/stock_logos/{clean}.png"
 
 @st.cache_data(ttl=60)
-def get_detailed_market_data():
-    """Busca Cotação e Variação"""
-    tickers_map = {
-        'IBOV': '^BVSP', 'DÓLAR': 'BRL=X',
-        'S&P 500': '^GSPC', 'NASDAQ': '^IXIC', 'VIX': '^VIX',
-        'BITCOIN': 'BTC-USD', 'ETHEREUM': 'ETH-USD', 'SOLANA': 'SOL-USD'
+def get_full_market_data():
+    """
+    Busca dados para as listas extensas de mercado.
+    Retorna DataFrames prontos para exibição.
+    """
+    # Dicionário de Listas
+    lists = {
+        'INDICES': {
+            'IBOVESPA': '^BVSP',
+            'IFIX (FIIs)': 'IFIX.SA', # Tentativa via Yahoo
+            'S&P 500': '^GSPC',
+            'NASDAQ': '^IXIC',
+            'DOW JONES': '^DJI',
+            'VIX (Medo)': '^VIX'
+        },
+        'COMMODITIES_CAMBIO': {
+            'DÓLAR': 'BRL=X',
+            'EURO': 'EURBRL=X',
+            'OURO': 'GC=F',
+            'PETRÓLEO BRENT': 'BZ=F',
+            'BITCOIN': 'BTC-USD',
+            'ETHEREUM': 'ETH-USD'
+        },
+        'TOP_BRASIL': {
+            'VALE': 'VALE3.SA',
+            'PETROBRAS': 'PETR4.SA',
+            'ITAU': 'ITUB4.SA',
+            'WEG': 'WEGE3.SA',
+            'AMBEV': 'ABEV3.SA',
+            'BANCO BRASIL': 'BBAS3.SA'
+        }
     }
+    
     results = {}
-    try:
-        data = yf.download(list(tickers_map.values()), period="5d", progress=False)['Close']
-        for name, symbol in tickers_map.items():
-            try:
-                if symbol in data.columns:
-                    series = data[symbol].dropna()
-                    current = series.iloc[-1]
-                    prev = series.iloc[-2]
-                    delta = current - prev
-                    pct = (delta / prev) * 100
-                    results[name] = {'price': current, 'delta': delta, 'pct': pct}
-                else:
-                    results[name] = {'price': 0, 'delta': 0, 'pct': 0}
-            except:
-                results[name] = {'price': 0, 'delta': 0, 'pct': 0}
-    except:
-        pass
+    
+    for category, items in lists.items():
+        rows = []
+        try:
+            # Baixa em lote para ser rápido
+            tickers = list(items.values())
+            data = yf.download(tickers, period="5d", progress=False)['Close']
+            
+            for name, ticker in items.items():
+                price, delta, pct = 0, 0, 0
+                try:
+                    # Verifica se veio como Series (1 ativo) ou DataFrame (vários)
+                    if len(tickers) == 1:
+                        series = data.dropna()
+                    else:
+                        if ticker in data.columns:
+                            series = data[ticker].dropna()
+                        else:
+                            series = []
+
+                    if len(series) >= 2:
+                        curr = series.iloc[-1]
+                        prev = series.iloc[-2]
+                        delta = curr - prev
+                        pct = (delta / prev) * 100
+                        price = curr
+                except:
+                    pass
+                
+                # Formatação visual da variação
+                arrow = "▲" if delta >= 0 else "▼"
+                rows.append({
+                    "Nome": name,
+                    "Preço": price,
+                    "Var %": pct, # Mantém numérico para config
+                    "Var R$": delta
+                })
+        except:
+            pass
+        
+        results[category] = pd.DataFrame(rows)
+
     return results
 
 @st.cache_data(ttl=300)
 def get_br_prices(ticker_list):
-    """Cotação Atual das Ações da Planilha"""
+    """Preços atuais para a planilha"""
     if not ticker_list: return {}
     sa_tickers = [f"{t}.SA" for t in ticker_list]
     prices = {}
@@ -152,60 +183,42 @@ def get_br_prices(ticker_list):
 # --- 4. APP PRINCIPAL ---
 
 st.title("💸 Dinheiro Data")
+st.markdown("---")
 
-# --- CARDS DE MERCADO ---
-M = get_detailed_market_data()
+# Coletar dados
+M = get_full_market_data()
 
-def render_market_card(name, prefix=""):
-    data = M.get(name, {'price': 0, 'delta': 0, 'pct': 0})
-    price = data['price']
-    delta = data['delta']
-    pct = data['pct']
-    
-    color_class = "index-delta-pos" if delta >= 0 else "index-delta-neg"
-    signal = "+" if delta >= 0 else ""
-    arrow = "▲" if delta >= 0 else "▼"
-    
-    if price == 0:
-        price_fmt = "---"
-        delta_fmt = ""
+# --- SEÇÃO 1: PANORAMA DE MERCADO (LISTAS EXTENSAS) ---
+st.subheader("🌍 Panorama de Mercado")
+
+col1, col2, col3 = st.columns(3)
+
+def show_market_list(col, title, df):
+    col.markdown(f"**{title}**")
+    if not df.empty:
+        col.dataframe(
+            df,
+            column_config={
+                "Nome": st.column_config.TextColumn("Ativo"),
+                "Preço": st.column_config.NumberColumn("Cotação", format="%.2f"),
+                "Var %": st.column_config.NumberColumn("Var %", format="%.2f %%"),
+                "Var R$": st.column_config.NumberColumn("Var $", format="%.2f"),
+            },
+            hide_index=True,
+            use_container_width=True
+        )
     else:
-        price_fmt = f"{prefix} {price:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-        delta_fmt = f"{arrow} {pct:.2f}% ({signal}{delta:,.2f})"
+        col.info("Carregando...")
 
-    st.markdown(f"""
-        <div class="index-card">
-            <div class="index-name">{name}</div>
-            <div class="index-price">{price_fmt}</div>
-            <div class="{color_class}">{delta_fmt}</div>
-        </div>
-    """, unsafe_allow_html=True)
-
-# Layout 3 Colunas
-c_br, c_us, c_cr = st.columns(3)
-
-with c_br:
-    st.markdown("### 🇧🇷 Brasil")
-    render_market_card('IBOV', "")
-    render_market_card('DÓLAR', "R$")
-
-with c_us:
-    st.markdown("### 🇺🇸 Estados Unidos")
-    render_market_card('S&P 500', "")
-    render_market_card('NASDAQ', "")
-    render_market_card('VIX', "")
-
-with c_cr:
-    st.markdown("### ₿ Cripto")
-    render_market_card('BITCOIN', "US$")
-    render_market_card('ETHEREUM', "US$")
-    render_market_card('SOLANA', "US$")
+show_market_list(col1, "📊 Índices Globais", M.get('INDICES', pd.DataFrame()))
+show_market_list(col2, "🛢️ Câmbio & Commodities", M.get('COMMODITIES_CAMBIO', pd.DataFrame()))
+show_market_list(col3, "🏭 Top Brasil", M.get('TOP_BRASIL', pd.DataFrame()))
 
 st.divider()
 
-# --- 5. LÓGICA DE DADOS ---
+# --- 5. PROCESSAMENTO PLANILHA (PERSISTENTE) ---
 def load_data():
-    uploaded = st.sidebar.file_uploader("📂 Atualizar Dados (.xlsx)", type=['xlsx'])
+    uploaded = st.sidebar.file_uploader("📂 Atualizar PEC.xlsx", type=['xlsx'])
     if uploaded: return pd.ExcelFile(uploaded)
     if os.path.exists("PEC.xlsx"): return pd.ExcelFile("PEC.xlsx")
     return None
@@ -216,11 +229,10 @@ df_div = pd.DataFrame()
 
 if xls:
     target_sheet = None
-    # Procura aba com BAZIN e DY
     for sheet in xls.sheet_names:
         df_chk = pd.read_excel(xls, sheet).head(2)
         cols_up = [str(c).upper() for c in df_chk.columns]
-        if any("BAZIN" in c for c in cols_up) and any("DY" in c for c in cols_up):
+        if any("BAZIN" in c for c in cols_up):
             target_sheet = sheet
             break
             
@@ -229,27 +241,25 @@ if xls:
             df_main = pd.read_excel(xls, target_sheet).fillna(0)
             cols = df_main.columns
             
-            # Mapeamento de Colunas
+            # Mapeamento
             c_tick = [c for c in cols if 'TICKER' in c.upper()][0]
             c_emp = [c for c in cols if 'EMPRESA' in c.upper()][0]
             c_bazin = [c for c in cols if 'BAZIN' in c.upper()][0]
             c_dy = [c for c in cols if 'DY' in c.upper()][0]
-            # Tenta achar Dividendo Por Ação (DPA)
-            c_dpa_list = [c for c in cols if 'DPA' in c.upper()]
-            c_dpa = c_dpa_list[0] if c_dpa_list else None
             
-            # Limpeza e Conversão
+            c_dpa_l = [c for c in cols if 'DPA' in c.upper()]
+            c_dpa = c_dpa_l[0] if c_dpa_l else None
+
+            # Tratamento
             df_main['TICKER_CLEAN'] = df_main[c_tick].astype(str).str.strip().str.upper()
             df_main['BAZIN_NUM'] = df_main[c_bazin].apply(clean_currency)
             df_main['DY_NUM'] = df_main[c_dy].apply(clean_currency)
-            if c_dpa:
-                df_main['DPA_NUM'] = df_main[c_dpa].apply(clean_currency)
-            else:
-                df_main['DPA_NUM'] = 0.0
+            if c_dpa: df_main['DPA_NUM'] = df_main[c_dpa].apply(clean_currency)
+            else: df_main['DPA_NUM'] = 0.0
             
-            # Preço Online e Margem
-            tickers_list = df_main['TICKER_CLEAN'].unique().tolist()
-            live_prices = get_br_prices(tickers_list)
+            # Cotação Online e Radar
+            tickers = df_main['TICKER_CLEAN'].unique().tolist()
+            live_prices = get_br_prices(tickers)
             df_main['PRECO_LIVE'] = df_main['TICKER_CLEAN'].map(live_prices).fillna(0)
             
             df_main['MARGEM'] = df_main.apply(
@@ -257,58 +267,60 @@ if xls:
                 axis=1
             )
             
-            # Visual
+            # Logo e Nome
             df_main['LOGO'] = df_main['TICKER_CLEAN'].apply(get_logo_url)
-            df_main['ATIVO_DISPLAY'] = df_main[c_emp] + " (" + df_main['TICKER_CLEAN'] + ")"
+            df_main['ATIVO_DISPLAY'] = df_main[c_emp] # Apenas nome, ticker já está na logo ou separado se quiser
             
-            # Tabelas Finais
+            # Dataframes Finais
+            # Tabela 1: Valuation
             df_radar = df_main[df_main['BAZIN_NUM'] > 0][['LOGO', 'ATIVO_DISPLAY', 'BAZIN_NUM', 'PRECO_LIVE', 'MARGEM']].copy()
             df_radar = df_radar.sort_values('MARGEM', ascending=False)
             
+            # Tabela 2: Dividendos
             df_div = df_main[df_main['DY_NUM'] > 0][['LOGO', 'ATIVO_DISPLAY', 'DPA_NUM', 'DY_NUM']].copy()
             df_div = df_div.sort_values('DY_NUM', ascending=False)
             
         except Exception as e:
-            st.error(f"Erro ao processar dados: {e}")
+            st.error(f"Erro na planilha: {e}")
 
-# --- 6. TABELA: PREÇO TETO (CENTRALIZADO) ---
-st.subheader("🎯 Radar de Preço-Teto")
+# --- 6. TABELA: VALUATION ---
+st.subheader("🎯 Radar de Preço-Teto (Bazin)")
 
 if not df_radar.empty:
     st.dataframe(
         df_radar,
         column_config={
-            "LOGO": st.column_config.ImageColumn("Log", width="small", alignment="center"), 
-            "ATIVO_DISPLAY": st.column_config.TextColumn("Ativo", width="medium", alignment="center"), 
-            "BAZIN_NUM": st.column_config.NumberColumn("Teto Bazin", format="R$ %.2f", width="small", alignment="center"),
-            "PRECO_LIVE": st.column_config.NumberColumn("Cotação", format="R$ %.2f", width="small", alignment="center"),
+            "LOGO": st.column_config.ImageColumn("Logo", width="small", alignment="center"),
+            "ATIVO_DISPLAY": st.column_config.TextColumn("Ativo", width="medium", alignment="center"),
+            "BAZIN_NUM": st.column_config.NumberColumn("Teto Bazin", format="R$ %.2f", alignment="center"),
+            "PRECO_LIVE": st.column_config.NumberColumn("Cotação Atual", format="R$ %.2f", alignment="center"),
             "MARGEM": st.column_config.ProgressColumn(
-                "Margem Segurança", 
-                format="%.1f%%", 
+                "Margem de Segurança",
+                format="%.1f%%",
                 min_value=-50, max_value=50,
-                width="large",
+                width="medium",
                 alignment="center"
             )
         },
         hide_index=True,
         use_container_width=True
     )
-else:
-    st.info("Carregue o arquivo PEC.xlsx no menu lateral ou no GitHub.")
+elif not xls:
+    st.info("⚠️ Arquivo 'PEC.xlsx' não encontrado. Faça o upload no GitHub.")
 
 st.divider()
 
-# --- 7. TABELA: DIVIDENDOS (CENTRALIZADO) ---
+# --- 7. TABELA: DIVIDENDOS ---
 st.subheader("💰 Dividendos Projetados")
 
 if not df_div.empty:
     st.dataframe(
         df_div,
         column_config={
-            "LOGO": st.column_config.ImageColumn("Log", width="small", alignment="center"),
-            "ATIVO_DISPLAY": st.column_config.TextColumn("Ativo", width="large", alignment="center"),
-            "DPA_NUM": st.column_config.NumberColumn("Dividendo por Ação", format="R$ %.2f", width="medium", alignment="center"),
-            "DY_NUM": st.column_config.NumberColumn("Dividend Yield", format="%.2f %%", width="medium", alignment="center"),
+            "LOGO": st.column_config.ImageColumn("Logo", width="small", alignment="center"),
+            "ATIVO_DISPLAY": st.column_config.TextColumn("Ativo", width="medium", alignment="center"),
+            "DPA_NUM": st.column_config.NumberColumn("Dividendo por Ação", format="R$ %.2f", alignment="center"),
+            "DY_NUM": st.column_config.NumberColumn("Dividend Yield", format="%.2f %%", alignment="center"),
         },
         hide_index=True,
         use_container_width=True
