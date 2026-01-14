@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import yfinance as yf
-import re
 
 # --- CONFIGURAÇÃO VISUAL (CLEAN & ROBUST) ---
 st.set_page_config(
@@ -119,9 +118,7 @@ try:
     df_val['PRECO_NUM'] = df_val[c_cotacao].apply(clean_currency)
     df_val['TETO_NUM'] = df_val[c_teto].apply(clean_currency)
     
-    # FÓRMULA CORRIGIDA: ((Teto - Atual) / Atual) * 100
-    # O Streamlit entende 0.5 como 50%, então não multiplicamos por 100 aqui para usar a barra de progresso depois
-    # Mas para o calculo da margem textual, usamos a logica correta
+    # FÓRMULA CORRIGIDA: ((Teto - Atual) / Atual)
     df_val['MARGEM_DECIMAL'] = (df_val['TETO_NUM'] - df_val['PRECO_NUM']) / df_val['PRECO_NUM']
     
     # Avatar
@@ -163,11 +160,9 @@ except:
 
 # 3. PROVENTOS (ANOS COMPLETOS)
 dados_anos = {'2024': [0.0]*12, '2025': [0.0]*12, '2026': [0.0]*12}
-anos_ordenados = ['2024', '2025', '2026']
 
 try:
     df_prov = pd.read_excel(xls, 'Proventos')
-    # Varre a coluna A procurando "Proventos 20xx"
     col_a = df_prov.iloc[:, 0].astype(str)
     
     for ano in ['2024', '2025', '2026']:
@@ -208,5 +203,47 @@ st.subheader("💰 Proventos Recebidos")
 tab24, tab25, tab26 = st.tabs(["2024", "2025", "2026"])
 
 def render_prov_tab(ano):
-    vals = dados_anos[ano]
-    df_tab = pd.DataFrame([vals], columns=['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT
+    vals = dados_anos.get(ano, [0.0]*12)
+    
+    # LISTA CORRIGIDA (SEM QUEBRA DE LINHA)
+    colunas_meses = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ']
+    
+    df_tab = pd.DataFrame([vals], columns=colunas_meses)
+    total = sum(vals)
+    
+    st.dataframe(
+        df_tab,
+        column_config={c: st.column_config.NumberColumn(format="R$ %.2f") for c in df_tab.columns},
+        hide_index=True,
+        use_container_width=True
+    )
+    st.caption(f"Total Acumulado em {ano}: **R$ {total:,.2f}**".replace(",", "X").replace(".", ",").replace("X", "."))
+
+with tab24: render_prov_tab('2024')
+with tab25: render_prov_tab('2025')
+with tab26: render_prov_tab('2026')
+
+st.divider()
+
+# 3. RADAR (VALUATION)
+st.subheader("🎯 Radar de Oportunidades")
+if not df_radar.empty:
+    st.dataframe(
+        df_radar,
+        column_config={
+            "LOGO": st.column_config.ImageColumn("", width="small"),
+            "EMPRESA": "Empresa",
+            "TICKER_CLEAN": "Ticker",
+            "PRECO_NUM": st.column_config.NumberColumn("Cotação", format="R$ %.2f"),
+            "TETO_NUM": st.column_config.NumberColumn("Preço Teto", format="R$ %.2f"),
+            "MARGEM_DECIMAL": st.column_config.ProgressColumn(
+                "Margem de Segurança (%)",
+                format="%.2f%%",
+                min_value=-0.5,
+                max_value=0.5,
+            ),
+        },
+        hide_index=True,
+        use_container_width=True,
+        height=500
+    )
