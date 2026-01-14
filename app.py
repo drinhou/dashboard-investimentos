@@ -13,7 +13,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# --- 2. CSS FINAL (FIX SELEÇÃO & COR) ---
+# --- 2. CSS CORRIGIDO - CENTRALIZAÇÃO TOTAL ---
 st.markdown("""
     <style>
         /* SCROLL SUAVE */
@@ -27,11 +27,9 @@ st.markdown("""
         #MainMenu {visibility: hidden;}
         footer {visibility: hidden;}
         header {visibility: hidden;}
-        [data-testid="stElementToolbar"] { display: none !important; } /* Tira menu da tabela */
+        [data-testid="stElementToolbar"] { display: none !important; }
         
-        /* --- CORREÇÃO DE CORES (MATANDO O VERMELHO) --- */
-        
-        /* Força a cor primária global para Verde */
+        /* CORES PRIMÁRIAS */
         :root {
             --primary-color: #10b981;
         }
@@ -45,7 +43,7 @@ st.markdown("""
             box-shadow: 0 0 0 1px #10b981 !important;
         }
         
-        /* --- TABELAS: BLOQUEIO DE CLIQUE E CENTRALIZAÇÃO --- */
+        /* --- TABELAS: CENTRALIZAÇÃO COMPLETA --- */
         
         div[data-testid="stDataFrame"] {
             border: 1px solid #1f2937;
@@ -53,53 +51,59 @@ st.markdown("""
             background-color: #0c120f;
         }
         
-        /* Cabeçalho */
+        /* Cabeçalho - Centralizado */
         div[data-testid="stDataFrame"] div[role="columnheader"] {
-            background-color: #141f1b;
-            color: #6ee7b7;
-            font-size: 12px;
-            font-weight: 700;
+            background-color: #141f1b !important;
+            color: #6ee7b7 !important;
+            font-size: 12px !important;
+            font-weight: 700 !important;
             text-transform: uppercase;
             border-bottom: 1px solid #064e3b;
             text-align: center !important;
-            justify-content: center !important;
-            display: flex;
         }
         
-        /* Células: Centralizadas + IMPOSSÍVEL DE CLICAR */
-        div[data-testid="stDataFrame"] div[role="gridcell"] {
-            display: flex;
+        div[data-testid="stDataFrame"] div[role="columnheader"] > div {
             justify-content: center !important;
-            align-items: center !important;
-            background-color: #0c120f;
-            /* O SEGREDO: Pointer events none impede o clique, logo não seleciona */
-            pointer-events: none !important; 
-            user-select: none !important;
-        }
-        
-        /* Garante centralização do conteúdo interno */
-        div[data-testid="stDataFrame"] div[role="gridcell"] > div {
-            display: flex;
-            justify-content: center !important;
-            align-items: center !important;
             text-align: center !important;
             width: 100%;
         }
         
-        /* Logos */
+        /* Células - Centralização Vertical e Horizontal TOTAL */
+        div[data-testid="stDataFrame"] div[role="gridcell"] {
+            background-color: #0c120f;
+            text-align: center !important;
+            vertical-align: middle !important;
+            pointer-events: none !important; 
+            user-select: none !important;
+        }
+        
+        /* Força centralização em TODOS os elementos internos */
+        div[data-testid="stDataFrame"] div[role="gridcell"] > div,
+        div[data-testid="stDataFrame"] div[role="gridcell"] > div > div,
+        div[data-testid="stDataFrame"] div[role="gridcell"] p,
+        div[data-testid="stDataFrame"] div[role="gridcell"] span {
+            display: flex !important;
+            justify-content: center !important;
+            align-items: center !important;
+            text-align: center !important;
+            width: 100% !important;
+            margin: 0 auto !important;
+        }
+        
+        /* Logos - Centralizadas */
         div[data-testid="stDataFrame"] div[role="gridcell"] img {
             border-radius: 50%;
             border: 1px solid #374151;
             padding: 2px;
             background-color: #fff;
-            width: 30px;
-            height: 30px;
+            width: 30px !important;
+            height: 30px !important;
             object-fit: contain;
-            display: block;
-            margin: 0 auto;
+            display: block !important;
+            margin: 0 auto !important;
         }
 
-        /* --- RESTO DO DESIGN --- */
+        /* --- DESIGN GERAL --- */
 
         /* Header */
         .main-header {
@@ -336,7 +340,6 @@ st.markdown("""
 def show_mini_table(col, title, df):
     col.write(f"**{title}**")
     if not df.empty:
-        # Lógica para IFIX e zeros
         def format_price(val):
             if val == 0: return "-"
             return "{:.2f}".format(val)
@@ -434,10 +437,8 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 if not df_radar.empty:
-    # SEARCH
     search_bazin = st.text_input("🔍 Pesquisar Ativo (Bazin)", placeholder="Ex: BB Seguridade", key="sbazin")
     
-    # FILTER
     df_show = df_radar.copy()
     if search_bazin:
         df_show = df_show[
@@ -485,10 +486,8 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 if not df_div.empty:
-    # SEARCH
     search_div = st.text_input("🔍 Pesquisar Ativo (Dividendos)", placeholder="Ex: BB Seguridade", key="sdiv")
     
-    # FILTER
     df_div_show = df_div.copy()
     if search_div:
         df_div_show = df_div_show[
