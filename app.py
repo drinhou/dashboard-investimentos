@@ -13,9 +13,10 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# ========== 2. CSS "ONYX" ==========
+# ========== 2. CSS "ONYX" CORRIGIDO (MOBILE & VISUAL) ==========
 st.markdown("""
     <style>
+        /* FONTE */
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
 
         :root {
@@ -38,7 +39,7 @@ st.markdown("""
         .stMarkdown a.anchor-link { display: none !important; }
         .block-container { padding-top: 1rem; padding-bottom: 3rem; }
 
-        /* HERO */
+        /* HERO HEADER */
         .hero-container {
             text-align: center;
             padding: 60px 20px 40px 20px;
@@ -63,7 +64,7 @@ st.markdown("""
             animation: pulse 2s infinite;
         }
 
-        /* CARDS */
+        /* CARDS NAVEGAÇÃO */
         .glass-card {
             background: var(--glass-bg);
             backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
@@ -77,7 +78,7 @@ st.markdown("""
         .card-title { font-size: 1.1rem; font-weight: 700; color: #fff; display: block; margin-bottom: 4px; }
         .card-desc { font-size: 0.8rem; color: #777; display: block; }
 
-        /* SEÇÕES */
+        /* TÍTULOS DE SEÇÃO (DESKTOP) */
         .section-box {
             margin-top: 50px; margin-bottom: 20px; padding-left: 15px; padding-right: 15px;
             border-left: 4px solid var(--neon-green);
@@ -85,7 +86,7 @@ st.markdown("""
             display: flex; align-items: center; justify-content: space-between;
             border-radius: 0 12px 12px 0; padding-top: 12px; padding-bottom: 12px;
         }
-        .section-title { font-size: 1.4rem; font-weight: 800; color: #fff; text-transform: uppercase; }
+        .section-title { font-size: 1.4rem; font-weight: 800; color: #fff; text-transform: uppercase; margin: 0; }
         .section-badge { 
             background: rgba(0, 255, 157, 0.1); color: var(--neon-green); 
             padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; 
@@ -108,7 +109,7 @@ st.markdown("""
             font-size: 13px !important; font-weight: 500 !important;
             border-bottom: 1px solid #161616 !important;
             display: flex; justify-content: center !important; align-items: center !important;
-            pointer-events: none !important;
+            pointer-events: none !important; /* Sem clique */
         }
         div[data-testid="stDataFrame"] div[role="gridcell"] > div {
             display: flex; justify-content: center !important; align-items: center !important;
@@ -120,27 +121,19 @@ st.markdown("""
             padding: 1px; display: block; margin: 0 auto;
         }
 
-        /* FAQ - ACORDEÃO */
+        /* FAQ STYLING */
         .streamlit-expanderHeader {
-            background-color: rgba(20, 20, 20, 0.4) !important;
+            background-color: rgba(20, 20, 20, 0.6) !important;
             border: 1px solid var(--glass-border) !important;
-            color: #e0e0e0 !important;
+            color: #fff !important;
             font-family: 'Inter', sans-serif !important;
             border-radius: 8px !important;
-            margin-bottom: 10px !important;
-        }
-        .streamlit-expanderHeader:hover {
-            border-color: var(--neon-green) !important;
-            color: var(--neon-green) !important;
         }
         .streamlit-expanderContent {
-            background-color: transparent !important;
-            color: #9ca3af !important;
+            color: #999 !important;
             border: none !important;
             padding-left: 20px !important;
-            font-size: 0.9rem !important;
         }
-        .streamlit-expanderHeader svg { fill: #666 !important; }
 
         /* INPUTS */
         div[data-baseweb="base-input"] {
@@ -155,27 +148,36 @@ st.markdown("""
             text-align: center; font-size: 0.7rem; color: #444; background: #050505; line-height: 1.5;
         }
 
-        /* MOBILE FIXES */
+        /* === CORREÇÃO MOBILE (TITULOS E BADGES) === */
         @media (max-width: 768px) {
             .hero-container { padding: 40px 15px 20px 15px; }
             .hero-title { font-size: 2.2rem; }
             .hero-subtitle { font-size: 0.7rem; flex-wrap: wrap; }
+            
             .glass-card { padding: 15px; margin-bottom: 8px; min-height: 90px; }
             .card-icon { font-size: 1.4rem; margin-bottom: 5px; }
             .card-title { font-size: 0.9rem; }
             .card-desc { display: none; }
+            
+            /* FORÇA QUEBRA DE LINHA NO TÍTULO */
             .section-box { 
-                flex-direction: column !important; align-items: flex-start !important;
-                gap: 8px; padding-bottom: 15px; height: auto;
+                flex-direction: column !important;
+                align-items: flex-start !important;
+                gap: 10px !important;
+                padding-bottom: 15px !important;
+                height: auto !important;
             }
-            .section-title { font-size: 1.2rem; }
-            .section-badge { align-self: flex-start; font-size: 0.65rem; padding: 4px 8px; }
+            .section-title { font-size: 1.2rem; margin-bottom: 5px; }
+            .section-badge { align-self: flex-start !important; font-size: 0.65rem; padding: 4px 8px; }
             .section-desc-text { margin-left: 10px; font-size: 0.8rem; margin-bottom: 15px; }
+            
             div[data-testid="stDataFrame"] div[role="columnheader"] { font-size: 10px !important; padding: 8px 2px !important; }
             div[data-testid="stDataFrame"] div[role="gridcell"] { font-size: 11px !important; padding: 8px 2px !important; }
             div[data-testid="stDataFrame"] img { width: 20px !important; height: 20px !important; }
+            
             .block-container { padding-left: 0.5rem; padding-right: 0.5rem; }
         }
+        
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
     </style>
 """, unsafe_allow_html=True)
@@ -266,12 +268,9 @@ def get_br_prices(ticker_list):
         return prices
     except: return {}
 
-# Função Segura de Carregamento (BLINDAGEM CONTRA FALHAS)
 def load_data():
     df_radar, df_div = pd.DataFrame(), pd.DataFrame()
     file_data = None
-    
-    # Bloco try/except global para impedir crash por falta de openpyxl
     try:
         if os.path.exists("PEC.xlsx"): file_data = pd.ExcelFile("PEC.xlsx")
         elif os.path.exists("PEC - Página1.csv"): file_data = pd.read_csv("PEC - Página1.csv")
@@ -308,13 +307,10 @@ def load_data():
                     
                     df_radar = target_df[target_df['BAZIN_F'] > 0][['Logo', 'Ativo', 'TICKER_F', 'BAZIN_F', 'PRECO_F', 'MARGEM_VAL']].sort_values('MARGEM_VAL', ascending=False)
                     df_div = target_df[target_df['DY_F'] > 0][['Logo', 'Ativo', 'TICKER_F', 'DPA_F', 'DY_F']].sort_values('DY_F', ascending=False)
-    except Exception as e:
-        # Se der erro no excel, não mata o app, apenas retorna vazio
-        pass
-        
+    except: pass
     return df_radar, df_div
 
-# ========== 4. LAYOUT UI ==========
+# ========== 4. UI ==========
 
 greeting, time_now = get_time_greeting()
 
