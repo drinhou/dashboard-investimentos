@@ -11,7 +11,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# --- 2. CSS DARK MODE & CENTRALIZAÇÃO ---
+# --- 2. CSS DARK MODE & DESIGN ---
 st.markdown("""
     <style>
         /* Fundo Escuro Global */
@@ -53,12 +53,14 @@ st.markdown("""
             text-align: center; 
         }
         
-        /* Centralizar Conteúdo das Células (Via CSS para não dar erro no Python) */
+        /* Células Centralizadas (Hack CSS Flexbox) */
         div[data-testid="stDataFrame"] div[role="gridcell"] {
             display: flex;
             justify-content: center;
             align-items: center;
             text-align: center;
+            color: #e0e0e0;
+            font-size: 0.95rem;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -82,17 +84,34 @@ def clean_dy_percentage(x):
     return val
 
 def get_logo_url(ticker):
-    """Busca logos"""
+    """
+    Busca logos com CDN rápido e Correção de Tickers novos.
+    """
     if not isinstance(ticker, str): return ""
     clean = ticker.replace('.SA', '').strip().upper()
     
-    # Cripto
-    if clean in ['BTC', 'BITCOIN']: return "https://assets.coingecko.com/coins/images/1/small/bitcoin.png"
-    if clean in ['ETH', 'ETHEREUM']: return "https://assets.coingecko.com/coins/images/279/small/ethereum.png"
-    if clean in ['SOL', 'SOLANA']: return "https://assets.coingecko.com/coins/images/4128/small/solana.png"
+    # --- DICIONÁRIO DE CORREÇÃO (ATIVOS QUE MUDARAM OU TEM LOGO DIFÍCIL) ---
+    mapa_logos = {
+        'ISAE4': 'TRPL4',  # ISA CTEEP mudou ticker, logo antiga é TRPL4
+        'CMIG4': 'CMIG4',
+        'BBSE3': 'BBSE3',
+        'BBAS3': 'BBAS3',
+        'ITUB4': 'ITUB4',
+        'SAPR4': 'SAPR11', # Tenta unit se preferencial falhar
+        'BTC': 'BTC',
+        'BITCOIN': 'BTC'
+    }
     
-    # Ações B3
-    return f"https://raw.githubusercontent.com/thefintz/icon-project/master/stock_logos/{clean}.png"
+    # Verifica se precisa trocar o ticker para achar a logo
+    search_ticker = mapa_logos.get(clean, clean)
+
+    # Cripto (CoinGecko)
+    if search_ticker in ['BTC', 'BITCOIN']: return "https://assets.coingecko.com/coins/images/1/small/bitcoin.png"
+    if search_ticker in ['ETH', 'ETHEREUM']: return "https://assets.coingecko.com/coins/images/279/small/ethereum.png"
+    if search_ticker in ['SOL', 'SOLANA']: return "https://assets.coingecko.com/coins/images/4128/small/solana.png"
+    
+    # Ações B3 (Usando JSDELIVR - CDN Mais rápido que GitHub Raw)
+    return f"https://cdn.jsdelivr.net/gh/thefintz/icon-project@master/stock_logos/{search_ticker}.png"
 
 @st.cache_data(ttl=60)
 def get_full_market_data():
@@ -138,7 +157,6 @@ def get_full_market_data():
                 rows.append({"Nome": name, "Preço": price, "Var %": pct, "Var R$": delta})
         except: pass
         
-        # Preenchimento para garantir 6 linhas
         while len(rows) < 6:
             rows.append({"Nome": "-", "Preço": 0, "Var %": 0, "Var R$": 0})
             
@@ -180,7 +198,7 @@ def show_market_list(col, title, df):
                 "Nome": st.column_config.TextColumn("Ativo"),
                 "Preço": st.column_config.NumberColumn("Cotação", format="%.2f"),
                 "Var %": st.column_config.NumberColumn("Var %", format="%.2f %%"),
-                "Var R$": st.column_config.NumberColumn("Var $", format="%.2f"),
+                "Var R$": st.column_config.NumberColumn("Var R$", format="%.2f"), # CORRIGIDO AQUI
             },
             hide_index=True,
             use_container_width=True
@@ -235,10 +253,11 @@ if file_data is not None:
                 target_df['TICKER_F'] = target_df[col_ticker].astype(str).str.strip().str.upper()
                 target_df['BAZIN_F'] = target_df[col_bazin].apply(clean_currency)
                 
-                # DY CORRIGIDO AQUI
+                # DY
                 if col_dy: target_df['DY_F'] = target_df[col_dy].apply(clean_dy_percentage)
                 else: target_df['DY_F'] = 0.0
                 
+                # DPA
                 if col_dpa: target_df['DPA_F'] = target_df[col_dpa].apply(clean_currency)
                 else: target_df['DPA_F'] = 0.0
                 
@@ -262,9 +281,9 @@ if file_data is not None:
                 df_div = df_div[['LOGO_F', 'NOME_F', 'DPA_F', 'DY_F']]
                 df_div = df_div.sort_values('DY_F', ascending=False)
     except Exception as e:
-        st.error(f"Erro ao ler dados: {e}")
+        st.error(f"Erro ao ler arquivo: {e}")
 
-# --- 6. RADAR BAZIN (SEM ALIGNMENT PARA EVITAR ERRO) ---
+# --- 6. RADAR BAZIN ---
 st.subheader("🎯 Radar de Preço Justo (Bazin)")
 
 if not df_radar.empty:
@@ -290,7 +309,7 @@ else:
 
 st.divider()
 
-# --- 7. DIVIDENDOS (SEM ALIGNMENT PARA EVITAR ERRO) ---
+# --- 7. DIVIDENDOS ---
 st.subheader("💰 Projeção de Renda Passiva")
 
 if not df_div.empty:
