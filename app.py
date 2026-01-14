@@ -5,7 +5,7 @@ import os
 import datetime
 import pytz
 
-# --- 1. CONFIGURAÇÃO (WIDE & DARK - SEM ÍCONES) ---
+# --- 1. CONFIGURAÇÃO (WIDE & DARK) ---
 st.set_page_config(
     page_title="Dinheiro Data",
     page_icon="📊",
@@ -13,25 +13,95 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# --- 2. CSS DE ALTA PRECISÃO (LIMPEZA TOTAL & BLOQUEIOS) ---
+# --- 2. CSS FINAL (FIX SELEÇÃO & COR) ---
 st.markdown("""
     <style>
         /* SCROLL SUAVE */
         html { scroll-behavior: smooth !important; }
 
-        /* Fundo e Fonte */
+        /* FUNDO */
         .stApp { background-color: #0c120f; color: #e0e0e0; }
         * { font-family: 'Segoe UI', 'Roboto', sans-serif; }
         
-        /* Ocultar Elementos do Streamlit */
+        /* OCULTAR ITENS PADRÃO */
         #MainMenu {visibility: hidden;}
         footer {visibility: hidden;}
         header {visibility: hidden;}
+        [data-testid="stElementToolbar"] { display: none !important; } /* Tira menu da tabela */
         
-        /* Ocultar Barra de Ferramentas da Tabela (Download/Search/Fullscreen) */
-        [data-testid="stElementToolbar"] { display: none !important; }
+        /* --- CORREÇÃO DE CORES (MATANDO O VERMELHO) --- */
         
-        /* HEADER PRINCIPAL */
+        /* Força a cor primária global para Verde */
+        :root {
+            --primary-color: #10b981;
+        }
+
+        /* Input de Texto (Busca) - Foco Verde */
+        div[data-baseweb="base-input"] {
+            border-color: #374151;
+        }
+        div[data-baseweb="base-input"]:focus-within {
+            border-color: #10b981 !important;
+            box-shadow: 0 0 0 1px #10b981 !important;
+        }
+        
+        /* --- TABELAS: BLOQUEIO DE CLIQUE E CENTRALIZAÇÃO --- */
+        
+        div[data-testid="stDataFrame"] {
+            border: 1px solid #1f2937;
+            border-radius: 10px;
+            background-color: #0c120f;
+        }
+        
+        /* Cabeçalho */
+        div[data-testid="stDataFrame"] div[role="columnheader"] {
+            background-color: #141f1b;
+            color: #6ee7b7;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            border-bottom: 1px solid #064e3b;
+            text-align: center !important;
+            justify-content: center !important;
+            display: flex;
+        }
+        
+        /* Células: Centralizadas + IMPOSSÍVEL DE CLICAR */
+        div[data-testid="stDataFrame"] div[role="gridcell"] {
+            display: flex;
+            justify-content: center !important;
+            align-items: center !important;
+            background-color: #0c120f;
+            /* O SEGREDO: Pointer events none impede o clique, logo não seleciona */
+            pointer-events: none !important; 
+            user-select: none !important;
+        }
+        
+        /* Garante centralização do conteúdo interno */
+        div[data-testid="stDataFrame"] div[role="gridcell"] > div {
+            display: flex;
+            justify-content: center !important;
+            align-items: center !important;
+            text-align: center !important;
+            width: 100%;
+        }
+        
+        /* Logos */
+        div[data-testid="stDataFrame"] div[role="gridcell"] img {
+            border-radius: 50%;
+            border: 1px solid #374151;
+            padding: 2px;
+            background-color: #fff;
+            width: 30px;
+            height: 30px;
+            object-fit: contain;
+            display: block;
+            margin: 0 auto;
+        }
+
+        /* --- RESTO DO DESIGN --- */
+
+        /* Header */
         .main-header {
             text-align: center;
             padding: 40px 0 10px 0;
@@ -55,7 +125,7 @@ st.markdown("""
             margin-top: 5px;
         }
 
-        /* BOTÕES DE NAVEGAÇÃO */
+        /* Botões Navegação */
         .nav-card {
             background-color: #111a16;
             border: 1px solid #1f2937;
@@ -66,7 +136,7 @@ st.markdown("""
             text-decoration: none !important;
             display: block;
             margin-bottom: 20px;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.3s ease;
         }
         .nav-card span, .nav-card div { text-decoration: none !important; }
         .nav-title { font-weight: 700; font-size: 1.1rem; display: block; color: #e5e7eb !important; }
@@ -78,69 +148,7 @@ st.markdown("""
         }
         .nav-card:hover .nav-title { color: #10b981 !important; }
 
-        /* --- TABELAS: VISUAL & COMPORTAMENTO --- */
-        
-        div[data-testid="stDataFrame"] {
-            border: 1px solid #1f2937;
-            border-radius: 10px;
-            background-color: #0c120f;
-        }
-        
-        /* Cabeçalho */
-        div[data-testid="stDataFrame"] div[role="columnheader"] {
-            background-color: #141f1b;
-            color: #6ee7b7;
-            font-size: 12px;
-            font-weight: 700;
-            text-transform: uppercase;
-            border-bottom: 1px solid #064e3b;
-            text-align: center !important;
-            justify-content: center !important;
-            display: flex;
-        }
-        
-        /* Células: Centralizadas e SEM SELEÇÃO */
-        div[data-testid="stDataFrame"] div[role="gridcell"] {
-            display: flex;
-            justify-content: center !important;
-            align-items: center !important;
-            background-color: #0c120f;
-            /* Remove efeitos de clique/foco */
-            outline: none !important;
-            box-shadow: none !important;
-            border: none !important;
-        }
-        
-        /* Remove o fundo cinza quando clica na célula */
-        div[data-testid="stDataFrame"] div[role="gridcell"]:focus,
-        div[data-testid="stDataFrame"] div[role="gridcell"]:active {
-            background-color: #0c120f !important;
-            color: inherit !important;
-        }
-
-        /* Garante que o conteúdo dentro da célula também alinhe */
-        div[data-testid="stDataFrame"] div[role="gridcell"] > div {
-            display: flex;
-            justify-content: center !important;
-            align-items: center !important;
-            text-align: center !important;
-            width: 100%;
-        }
-        
-        /* Logos */
-        div[data-testid="stDataFrame"] div[role="gridcell"] img {
-            border-radius: 50%;
-            border: 1px solid #374151;
-            padding: 2px;
-            background-color: #fff;
-            width: 30px;
-            height: 30px;
-            object-fit: contain;
-            display: block;
-            margin: 0 auto;
-        }
-
-        /* TÍTULOS DE SEÇÃO */
+        /* Seções */
         .section-wrapper { margin-top: 60px; margin-bottom: 20px; }
         .section-header {
             font-size: 1.6rem;
@@ -160,8 +168,6 @@ st.markdown("""
             max-width: 800px;
             line-height: 1.4;
         }
-        
-        /* BADGES */
         .status-badge {
             background-color: #064e3b;
             color: #34d399;
@@ -173,7 +179,7 @@ st.markdown("""
             letter-spacing: 0.5px;
         }
         
-        /* FOOTER */
+        /* Footer */
         .footer-disclaimer {
             margin-top: 100px;
             padding: 40px;
