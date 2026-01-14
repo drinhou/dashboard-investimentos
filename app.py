@@ -13,7 +13,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# ========== 2. CSS RESPONSIVO (ONYX HYBRID) ==========
+# ========== 2. CSS RESPONSIVO CORRIGIDO ==========
 st.markdown("""
     <style>
         /* IMPORTAR FONTE */
@@ -40,7 +40,7 @@ st.markdown("""
         [data-testid="stElementToolbar"] { display: none !important; }
         .block-container { padding-top: 1rem; padding-bottom: 3rem; }
 
-        /* --- HEADER HERO (ADAPTATIVO) --- */
+        /* --- HEADER HERO --- */
         .hero-container {
             text-align: center;
             padding: 60px 20px 40px 20px;
@@ -50,14 +50,13 @@ st.markdown("""
         }
         
         .hero-title {
-            font-size: 4rem; /* Desktop */
+            font-size: 4rem;
             font-weight: 800;
             letter-spacing: -2px;
             background: linear-gradient(180deg, #ffffff 0%, #666666 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             margin: 0;
-            text-shadow: 0 10px 30px rgba(0,0,0,0.5);
             line-height: 1.1;
         }
         
@@ -100,7 +99,7 @@ st.markdown("""
             overflow: hidden;
         }
         
-        .glass-card:hover, .glass-card:active {
+        .glass-card:hover {
             border-color: rgba(0, 255, 157, 0.4);
             transform: translateY(-4px);
         }
@@ -109,7 +108,7 @@ st.markdown("""
         .card-title { font-size: 1.1rem; font-weight: 700; color: #fff; display: block; margin-bottom: 4px; }
         .card-desc { font-size: 0.8rem; color: #777; display: block; }
 
-        /* --- TÍTULOS DE SEÇÃO --- */
+        /* --- TÍTULOS DE SEÇÃO (FLEXBOX) --- */
         .section-box {
             margin-top: 50px;
             margin-bottom: 20px;
@@ -118,10 +117,11 @@ st.markdown("""
             background: linear-gradient(90deg, rgba(0, 255, 157, 0.05) 0%, transparent 100%);
             display: flex;
             align-items: center;
-            justify-content: space-between;
+            justify-content: space-between; /* Padrão Desktop: Lado a Lado */
             border-radius: 0 12px 12px 0;
             padding-top: 12px;
             padding-bottom: 12px;
+            padding-right: 15px;
         }
         .section-title { font-size: 1.4rem; font-weight: 800; color: #fff; text-transform: uppercase; }
         .section-badge { 
@@ -129,11 +129,10 @@ st.markdown("""
             color: var(--neon-green); 
             padding: 4px 10px; 
             border-radius: 6px; 
-            font-size: 0.7rem; 
+            font-size: 0.75rem; 
             font-weight: 700; 
             border: 1px solid rgba(0, 255, 157, 0.2);
-            white-space: nowrap; /* Não quebra linha no mobile */
-            margin-right: 10px;
+            white-space: nowrap;
         }
         .section-desc-text {
             margin-left: 20px; margin-bottom: 20px; color:#666; font-size:0.85rem; max-width:800px;
@@ -145,7 +144,6 @@ st.markdown("""
             border: 1px solid #1f1f1f !important;
             border-radius: 12px;
         }
-        
         div[data-testid="stDataFrame"] div[role="columnheader"] {
             background-color: #0f0f0f !important;
             color: #666 !important;
@@ -157,7 +155,6 @@ st.markdown("""
             justify-content: center !important;
             display: flex;
         }
-        
         div[data-testid="stDataFrame"] div[role="gridcell"] {
             background-color: #080808 !important;
             color: #e0e0e0 !important;
@@ -169,8 +166,6 @@ st.markdown("""
             align-items: center !important;
             pointer-events: none !important;
         }
-        
-        /* Centralização Interna */
         div[data-testid="stDataFrame"] div[role="gridcell"] > div {
             display: flex;
             justify-content: center !important;
@@ -178,7 +173,6 @@ st.markdown("""
             width: 100%;
             text-align: center !important;
         }
-
         div[data-testid="stDataFrame"] img {
             border-radius: 50%;
             width: 26px !important;
@@ -215,37 +209,51 @@ st.markdown("""
         }
 
         /* ========================================= */
-        /* === MEDIA QUERIES (MOBILE OTIMIZADO) === */
+        /* === CORREÇÃO MOBILE (O PULO DO GATO) === */
         /* ========================================= */
         
         @media (max-width: 768px) {
-            /* Hero menor no celular */
-            .hero-container { padding: 40px 15px 30px 15px; }
-            .hero-title { font-size: 2.5rem; }
-            .hero-subtitle { font-size: 0.75rem; letter-spacing: 1px; flex-wrap: wrap; }
+            /* 1. Hero menor */
+            .hero-container { padding: 40px 15px 20px 15px; }
+            .hero-title { font-size: 2.2rem; }
+            .hero-subtitle { font-size: 0.7rem; letter-spacing: 1px; flex-wrap: wrap; }
             
-            /* Cards de Navegação menores */
-            .glass-card { padding: 15px; margin-bottom: 5px; min-height: 100px; }
+            /* 2. Cards Compactos */
+            .glass-card { padding: 15px; margin-bottom: 8px; min-height: 90px; }
             .card-icon { font-size: 1.4rem; margin-bottom: 5px; }
-            .card-title { font-size: 0.95rem; }
-            .card-desc { display: none; } /* Oculta descrição no mobile p/ economizar espaço */
+            .card-title { font-size: 0.9rem; }
+            .card-desc { display: none; }
             
-            /* Ajuste de Seções */
-            .section-box { padding-left: 10px; margin-top: 40px; }
-            .section-title { font-size: 1.1rem; }
-            .section-badge { font-size: 0.6rem; padding: 3px 8px; }
-            .section-desc-text { margin-left: 10px; font-size: 0.8rem; margin-bottom: 15px; }
+            /* 3. CORREÇÃO DA CAIXA DE TÍTULO (O PROBLEMA DA FOTO) */
+            .section-box { 
+                flex-direction: column; /* Empilha um em cima do outro */
+                align-items: flex-start; /* Alinha à esquerda */
+                gap: 10px; /* Espaço entre título e badge */
+                padding-right: 10px;
+                margin-top: 30px;
+            }
+            .section-title { 
+                font-size: 1.2rem; /* Fonte um pouco menor */
+            }
+            .section-badge { 
+                font-size: 0.7rem; 
+                padding: 4px 10px; 
+                align-self: flex-start; /* Garante que fique na esquerda */
+            }
+            .section-desc-text { 
+                margin-left: 10px; 
+                font-size: 0.8rem; 
+                margin-bottom: 15px; 
+            }
             
-            /* Ajuste Fino das Tabelas Mobile */
-            div[data-testid="stDataFrame"] div[role="columnheader"] { font-size: 10px !important; padding: 8px 4px !important; }
-            div[data-testid="stDataFrame"] div[role="gridcell"] { font-size: 12px !important; padding: 8px 4px !important; }
-            div[data-testid="stDataFrame"] img { width: 22px !important; height: 22px !important; }
+            /* 4. Tabela compacta */
+            div[data-testid="stDataFrame"] div[role="columnheader"] { font-size: 10px !important; padding: 8px 2px !important; }
+            div[data-testid="stDataFrame"] div[role="gridcell"] { font-size: 11px !important; padding: 8px 2px !important; }
+            div[data-testid="stDataFrame"] img { width: 20px !important; height: 20px !important; }
             
-            /* Remove excesso de margem lateral padrão do Streamlit */
-            .block-container { padding-left: 1rem; padding-right: 1rem; }
+            .block-container { padding-left: 0.5rem; padding-right: 0.5rem; }
         }
         
-        /* Animação */
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
     </style>
 """, unsafe_allow_html=True)
