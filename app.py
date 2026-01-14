@@ -374,4 +374,188 @@ def load_data():
                 c_emp = next((c for c in cols if 'EMPRESA' in c), None)
 
                 if c_tick and c_baz:
-                    target_df['T
+                    target_df['TICKER_F'] = target_df[c_tick].astype(str).str.strip().str.upper()
+                    target_df['BAZIN_F'] = target_df[c_baz].apply(clean_currency)
+                    target_df['DY_F'] = target_df[c_dy].apply(clean_dy_percentage) if c_dy else 0.0
+                    target_df['DPA_F'] = target_df[c_dpa].apply(clean_currency) if c_dpa else 0.0
+                    
+                    prices = get_br_prices(target_df['TICKER_F'].unique().tolist())
+                    target_df['PRECO_F'] = target_df['TICKER_F'].map(prices).fillna(0)
+                    target_df['MARGEM_VAL'] = target_df.apply(lambda x: ((x['BAZIN_F'] - x['PRECO_F']) / x['PRECO_F'] * 100) if x['PRECO_F'] > 0 else -999, axis=1)
+                    target_df['Logo'] = target_df['TICKER_F'].apply(get_logo_url)
+                    target_df['Ativo'] = target_df[c_emp] if c_emp else target_df['TICKER_F']
+                    
+                    df_radar = target_df[target_df['BAZIN_F'] > 0][['Logo', 'Ativo', 'TICKER_F', 'BAZIN_F', 'PRECO_F', 'MARGEM_VAL']].sort_values('MARGEM_VAL', ascending=False)
+                    df_div = target_df[target_df['DY_F'] > 0][['Logo', 'Ativo', 'TICKER_F', 'DPA_F', 'DY_F']].sort_values('DY_F', ascending=False)
+        except: pass
+    return df_radar, df_div
+
+# ========== 4. UI ==========
+
+greeting, time_now = get_time_greeting()
+
+# HERO
+st.markdown(f"""
+    <div class='hero-container'>
+        <h1 class='hero-title'>DINHEIRO DATA</h1>
+        <div class='hero-subtitle'>
+            <div class='live-indicator'></div>
+            {greeting}, INVESTIDOR • {time_now}
+        </div>
+    </div>
+""", unsafe_allow_html=True)
+
+# NAV
+n1, n2, n3 = st.columns(3)
+with n1:
+    st.markdown("""<a href='#panorama' class='glass-card'>
+        <span class='card-icon'>🌍</span><span class='card-title'>Panorama Global</span><span class='card-desc'>Índices & Moedas</span>
+    </a>""", unsafe_allow_html=True)
+with n2:
+    st.markdown("""<a href='#radar-bazin' class='glass-card'>
+        <span class='card-icon'>🎯</span><span class='card-title'>Radar Bazin</span><span class='card-desc'>Preço Teto</span>
+    </a>""", unsafe_allow_html=True)
+with n3:
+    st.markdown("""<a href='#dividendos' class='glass-card'>
+        <span class='card-icon'>💰</span><span class='card-title'>Dividendos</span><span class='card-desc'>Yield 2026</span>
+    </a>""", unsafe_allow_html=True)
+
+M = get_market_data()
+df_radar, df_div = load_data()
+
+# --- PANORAMA ---
+st.markdown("<div id='panorama'></div>", unsafe_allow_html=True)
+st.markdown("""
+<div class='section-box'>
+    <div class='section-title'>Panorama Global</div>
+    <div class='section-badge'>LIVE DATA</div>
+</div>
+""", unsafe_allow_html=True)
+
+def render_market_table(col, title, df):
+    col.markdown(f"<div style='margin-bottom:12px; font-weight:700; color:#fff; letter-spacing:1px; font-size:0.85rem;'>{title}</div>", unsafe_allow_html=True)
+    if not df.empty:
+        def color_var(val):
+            if val > 0: return 'color: #00ff9d; font-weight: 600;'
+            if val < 0: return 'color: #ff4d4d; font-weight: 600;'
+            return 'color: #666;'
+        def fmt_price(val): return "-" if val == 0 else f"{val:.2f}"
+        
+        styled = df.style.format({'Preço': fmt_price, 'Var%': '{:+.2f}%'}).map(color_var, subset=['Var%'])
+        col.dataframe(
+            styled,
+            column_config={'Ativo': st.column_config.TextColumn("Ativo"), 'Preço': st.column_config.TextColumn("Cotação"), 'Var%': st.column_config.TextColumn("Var %")},
+            hide_index=True, use_container_width=True
+        )
+
+r1, r2, r3 = st.columns(3)
+render_market_table(r1, "🇺🇸 ÍNDICES EUA", M['USA'])
+render_market_table(r2, "🇧🇷 ÍNDICES BRASIL", M['BRASIL'])
+render_market_table(r3, "💱 MOEDAS", M['MOEDAS'])
+st.write("") 
+r4, r5 = st.columns(2)
+render_market_table(r4, "🛢️ COMMODITIES", M['COMMODITIES'])
+render_market_table(r5, "💎 CRIPTOATIVOS", M['CRIPTO'])
+
+# --- BAZIN ---
+st.markdown("<div id='radar-bazin'></div>", unsafe_allow_html=True)
+count_bazin = len(df_radar[df_radar['MARGEM_VAL'] > 10]) if not df_radar.empty else 0
+
+st.markdown(f"""
+<div class='section-box'>
+    <div class='section-title'>Radar Bazin</div>
+    <div class='section-badge'>{count_bazin} OPORTUNIDADES (>10%)</div>
+</div>
+<div class='section-desc-text'>
+    O Preço Teto é calculado utilizando a metodologia de Décio Bazin (adaptado à nossa visão), visando identificar ativos que pagam bons dividendos a preços descontados.
+</div>
+""", unsafe_allow_html=True)
+
+if not df_radar.empty:
+    search1 = st.text_input("", placeholder="🔍 Ex: BB Seguridade...", key="s1")
+    data_show = df_radar.copy()
+    if search1: data_show = data_show[data_show['Ativo'].str.contains(search1, case=False) | data_show['TICKER_F'].str.contains(search1, case=False)]
+
+    def style_bazin(v):
+        if v > 10: return 'color: #00ff9d; font-weight: 700;'
+        if v < 0: return 'color: #ff4d4d; font-weight: 700;'
+        return 'color: #666;'
+
+    st.dataframe(
+        data_show.style.format({'BAZIN_F': 'R$ {:.2f}', 'PRECO_F': 'R$ {:.2f}', 'MARGEM_VAL': '{:+.1f}%'}).map(style_bazin, subset=['MARGEM_VAL']),
+        column_config={"Logo": st.column_config.ImageColumn(""), "Ativo": st.column_config.TextColumn("Ativo"), "TICKER_F": None, "BAZIN_F": st.column_config.TextColumn("Preço Teto"), "PRECO_F": st.column_config.TextColumn("Cotação"), "MARGEM_VAL": st.column_config.TextColumn("Margem")},
+        hide_index=True, use_container_width=True
+    )
+
+# --- DIVIDENDOS ---
+st.markdown("<div id='dividendos'></div>", unsafe_allow_html=True)
+count_div = len(df_div[df_div['DY_F'] > 8]) if not df_div.empty else 0
+
+st.markdown(f"""
+<div class='section-box'>
+    <div class='section-title'>Dividendos</div>
+    <div class='section-badge'>{count_div} ATIVOS PAGADORES (>8%)</div>
+</div>
+<div class='section-desc-text'>
+    Estimativas de rendimento anual (Dividend Yield) para o exercício de 2026, baseadas em projeções de mercado e histórico de pagamentos.
+</div>
+""", unsafe_allow_html=True)
+
+if not df_div.empty:
+    search2 = st.text_input("", placeholder="🔍 Ex: BB Seguridade...", key="s2")
+    div_show = df_div.copy()
+    if search2: div_show = div_show[div_show['Ativo'].str.contains(search2, case=False) | div_show['TICKER_F'].str.contains(search2, case=False)]
+
+    def style_dy(v): return 'color: #00ff9d; font-weight: 700;' if v > 8 else 'color: #666;'
+
+    st.dataframe(
+        div_show.style.format({'DPA_F': 'R$ {:.2f}', 'DY_F': '{:.2f}%'}).map(style_dy, subset=['DY_F']),
+        column_config={"Logo": st.column_config.ImageColumn(""), "Ativo": st.column_config.TextColumn("Ativo"), "TICKER_F": None, "DPA_F": st.column_config.TextColumn("Div. / Ação"), "DY_F": st.column_config.TextColumn("Yield Projetado")},
+        hide_index=True, use_container_width=True
+    )
+
+# --- FAQ ---
+st.markdown("<div style='margin-top: 80px;'></div>", unsafe_allow_html=True)
+st.markdown("""
+<div class='section-box'>
+    <div class='section-title'>Dúvidas Frequentes</div>
+    <div class='section-badge'>FAQ</div>
+</div>
+""", unsafe_allow_html=True)
+
+faq_data = [
+    {
+        "q": "Como é calculado o Preço Teto (Método Bazin)?",
+        "a": "Utilizamos a metodologia clássica de Décio Bazin. O cálculo baseia-se em dividir o dividendo projetado (ou médio) por uma taxa de retorno mínima exigida. Se o resultado for superior à cotação atual, o ativo é considerado descontado segundo este modelo."
+    },
+    {
+        "q": "De onde vêm os dados apresentados?",
+        "a": "As cotações (preço atual) e variações diárias são extraídas em tempo real via API do Yahoo Finance (yfinance). Os dados fundamentalistas (projeções de dividendos e DPA) são processados a partir da nossa base de dados analítica interna."
+    },
+    {
+        "q": "O que significa a 'Margem de Segurança'?",
+        "a": "É a diferença percentual entre o Preço Teto calculado e a Cotação de mercado atual. Uma margem positiva (ex: +15%) indica que o ativo está sendo negociado abaixo do seu preço justo teórico, oferecendo uma 'gordura' de segurança para o investidor."
+    },
+    {
+        "q": "Como são feitas as projeções de Dividendos para 2026?",
+        "a": "As projeções baseiam-se em uma análise conservadora que considera o histórico de *payout* da empresa, a expectativa de lucros futuros e relatórios de mercado. Trata-se de uma estimativa, não de uma garantia de pagamento."
+    },
+    {
+        "q": "Por que alguns ativos aparecem com traço (-) na cotação?",
+        "a": "Isso pode ocorrer momentaneamente caso a API de dados não consiga retornar o valor em tempo real ou se o mercado estiver fechado/em leilão. O sistema é programado para não exibir valores incorretos (como R$ 0,00) nessas situações."
+    }
+]
+
+for item in faq_data:
+    with st.expander(f"📌 {item['q']}"):
+        st.markdown(item['a'])
+
+# --- FOOTER ---
+st.markdown("""
+<div class='legal-footer'>
+    <strong>⚠️ ISENÇÃO DE RESPONSABILIDADE</strong><br><br>
+    As informações, dados e indicadores apresentados nesta plataforma são obtidos de fontes públicas e cálculos automatizados. Este dashboard tem caráter estritamente educativo e informativo.<br>
+    <strong>Nenhum conteúdo aqui deve ser interpretado como recomendação de compra, venda ou manutenção de ativos mobiliários.</strong><br>
+    Investimentos em renda variável estão sujeitos a riscos de mercado e perda de capital. Realize sua própria análise ou consulte um profissional certificado antes de tomar decisões financeiras.
+</div>
+""", unsafe_allow_html=True)
