@@ -83,12 +83,12 @@ def clean_dy_percentage(x):
 
 def get_logo_url(ticker):
     """
-    Usa a lista de domínios fornecida pelo usuário para buscar o Favicon no Google.
+    Busca o Favicon baseado na sua lista manual de sites.
     """
     if not isinstance(ticker, str): return ""
     clean = ticker.replace('.SA', '').strip().upper()
     
-    # --- SUA LISTA DE DOMÍNIOS (IRB ATUALIZADO) ---
+    # --- SUA LISTA DE DOMÍNIOS (HARDCODED) ---
     meus_sites = {
         'CXSE3': 'caixaseguradora.com.br',
         'BBSE3': 'bbseguros.com.br',
@@ -105,12 +105,15 @@ def get_logo_url(ticker):
         'RANI3': 'irani.com.br',
         'KLBN11': 'klabin.com.br',
         'KLBN4': 'klabin.com.br',
-        'IRBR3': 'ri.irbre.com', # <--- ATUALIZADO AQUI
+        'IRBR3': 'ri.irbre.com', # Corrigido para site de RI
         'FLRY3': 'fleury.com.br',
-        'PSSA3': 'portoseguro.com.br'
+        'PSSA3': 'portoseguro.com.br',
+        'WEGE3': 'weg.net',
+        'VALE3': 'vale.com',
+        'ABEV3': 'ambev.com.br'
     }
 
-    # 1. Se estiver na sua lista VIP, usa o Google Favicon
+    # 1. Se estiver na sua lista, usa Google Favicon (Alta Qualidade)
     if clean in meus_sites:
         return f"https://www.google.com/s2/favicons?domain={meus_sites[clean]}&sz=128"
 
@@ -119,7 +122,7 @@ def get_logo_url(ticker):
     if clean in ['ETH', 'ETHEREUM']: return "https://assets.coingecko.com/coins/images/279/small/ethereum.png"
     if clean in ['SOL', 'SOLANA']: return "https://assets.coingecko.com/coins/images/4128/small/solana.png"
 
-    # 3. Fallback genérico para outros ativos
+    # 3. Fallback genérico
     return f"https://cdn.jsdelivr.net/gh/thefintz/icon-project@master/stock_logos/{clean}.png"
 
 @st.cache_data(ttl=60)
@@ -236,7 +239,7 @@ df_div = pd.DataFrame()
 
 if file_data is not None:
     try:
-        # Se for ExcelFile, procura aba. Se for DataFrame, já é dados.
+        # Lógica de leitura de Excel ou CSV
         if isinstance(file_data, pd.ExcelFile):
             target_df = pd.DataFrame()
             for sheet in file_data.sheet_names:
@@ -263,11 +266,9 @@ if file_data is not None:
                 target_df['TICKER_F'] = target_df[col_ticker].astype(str).str.strip().str.upper()
                 target_df['BAZIN_F'] = target_df[col_bazin].apply(clean_currency)
                 
-                # DY CORRIGIDO
                 if col_dy: target_df['DY_F'] = target_df[col_dy].apply(clean_dy_percentage)
                 else: target_df['DY_F'] = 0.0
                 
-                # DPA
                 if col_dpa: target_df['DPA_F'] = target_df[col_dpa].apply(clean_currency)
                 else: target_df['DPA_F'] = 0.0
                 
@@ -302,10 +303,11 @@ if not df_radar.empty:
     st.dataframe(
         df_radar,
         column_config={
-            "LOGO_F": st.column_config.ImageColumn("Logo", width="small"),
+            # TRUQUE VISUAL: Coluna Logo sem nome ("") e width small, colada na NOME_F
+            "LOGO_F": st.column_config.ImageColumn("", width="small"),
             "NOME_F": st.column_config.TextColumn("Ativo", width="medium"),
-            "BAZIN_F": st.column_config.NumberColumn("Preço Justo (Teto)", format="R$ %.2f"),
-            "PRECO_F": st.column_config.NumberColumn("Cotação Atual", format="R$ %.2f"),
+            "BAZIN_F": st.column_config.NumberColumn("Preço Justo (Teto)", format="R$ %.2f", width="small"),
+            "PRECO_F": st.column_config.NumberColumn("Cotação Atual", format="R$ %.2f", width="small"),
             "MARGEM_F": st.column_config.ProgressColumn(
                 "Margem de Segurança",
                 format="%.1f%%",
@@ -328,10 +330,11 @@ if not df_div.empty:
     st.dataframe(
         df_div,
         column_config={
-            "LOGO_F": st.column_config.ImageColumn("Logo", width="small"),
+            # Mesmo truque visual aqui
+            "LOGO_F": st.column_config.ImageColumn("", width="small"),
             "NOME_F": st.column_config.TextColumn("Ativo", width="medium"),
-            "DPA_F": st.column_config.NumberColumn("Dividendo por Ação", format="R$ %.2f"),
-            "DY_F": st.column_config.NumberColumn("Dividend Yield", format="%.2f %%"),
+            "DPA_F": st.column_config.NumberColumn("Dividendo por Ação", format="R$ %.2f", width="small"),
+            "DY_F": st.column_config.NumberColumn("Dividend Yield", format="%.2f %%", width="small"),
         },
         hide_index=True,
         use_container_width=True
