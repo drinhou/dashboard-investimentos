@@ -1,276 +1,242 @@
 import streamlit as st
 import pandas as pd
 import yfinance as yf
-import datetime
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(
-    page_title="Invest Pro",
-    page_icon="🦅",
+    page_title="Aura Finance",
+    page_icon="✨",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# --- CSS PRO (ESTILO PANORAMA/INVESTIDOR10) ---
+# --- CSS REFINADO (CONTRASTE E VISUAL) ---
 st.markdown("""
     <style>
-        /* Fundo e Fontes */
-        .main {background-color: #f4f6f9;}
-        h1, h2, h3 {font-family: 'Roboto', sans-serif; color: #1e293b;}
+        /* Fundo Geral */
+        .main {background-color: #f8fafc;}
         
-        /* Cards de Métricas */
+        /* Ajuste de Fontes */
+        h1, h2, h3 {font-family: 'Helvetica Neue', sans-serif; color: #0f172a; font-weight: 600;}
+        p {color: #475569;}
+        
+        /* CARDS (Métricas de Mercado) */
         div[data-testid="stMetric"] {
             background-color: #ffffff;
             border: 1px solid #e2e8f0;
-            border-radius: 8px;
+            border-radius: 12px;
             padding: 15px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
-        div[data-testid="stMetricLabel"] {font-size: 0.85rem; color: #64748b; font-weight: 500;}
-        div[data-testid="stMetricValue"] {font-size: 1.1rem; color: #0f172a; font-weight: 700;}
-        
+        /* Forçar cor preta nos labels e valores (Correção do Bug) */
+        div[data-testid="stMetricLabel"] p {color: #64748b !important; font-size: 0.9rem !important; font-weight: 600;}
+        div[data-testid="stMetricValue"] div {color: #0f172a !important; font-size: 1.4rem !important;}
+
         /* Tabelas */
         div[data-testid="stDataFrame"] {
             background-color: white;
-            padding: 10px;
-            border-radius: 8px;
+            border-radius: 12px;
             border: 1px solid #e2e8f0;
+            padding: 10px;
         }
         
-        /* Sidebar */
-        section[data-testid="stSidebar"] {background-color: #1e293b;}
-        
-        /* Status Badges */
-        .compra-forte {color: #16a34a; font-weight: bold; padding: 4px; border-radius: 4px; background: #dcfce7;}
-        .aguarde {color: #dc2626; font-weight: bold; padding: 4px; border-radius: 4px; background: #fee2e2;}
+        /* Imagens/Logos nas tabelas */
+        img {border-radius: 50%;}
     </style>
 """, unsafe_allow_html=True)
 
 # --- FUNÇÕES ---
 
 def clean_currency(x):
-    """Limpa strings de moeda (R$) e converte para float."""
-    if isinstance(x, (int, float)):
-        return float(x)
+    if isinstance(x, (int, float)): return float(x)
     if isinstance(x, str):
-        # Remove quebras de linha e sujeira
         clean = x.split('\n')[0].replace('R$', '').replace('.', '').replace(',', '.').replace('%', '').strip()
-        try:
-            return float(clean)
-        except:
-            return 0.0
+        try: return float(clean)
+        except: return 0.0
     return 0.0
 
-@st.cache_data(ttl=300) # Atualiza a cada 5 min
+@st.cache_data(ttl=600)
 def get_market_indices():
-    """Busca índices reais do mercado."""
-    tickers = {
-        'IBOV': '^BVSP',
-        'S&P 500': '^GSPC',
-        'Dólar': 'BRL=X',
-        'Bitcoin': 'BTC-USD'
-    }
-    try:
-        data = yf.download(list(tickers.values()), period="1d", progress=False)['Close'].iloc[-1]
-        return {
-            'IBOV': data.get('^BVSP', 0),
-            'S&P 500': data.get('^GSPC', 0),
-            'Dólar': data.get('BRL=X', 0),
-            'Bitcoin': data.get('BTC-USD', 0)
-        }
-    except:
-        return {'IBOV': 0, 'S&P 500': 0, 'Dólar': 0, 'Bitcoin': 0}
+    # Busca segura e individual para não quebrar tudo se um falhar
+    indices = {'IBOV': 0, 'S&P 500': 0, 'Dólar': 0, 'Bitcoin': 0}
+    
+    def get_single_ticker(ticker):
+        try:
+            return yf.Ticker(ticker).history(period="1d")['Close'].iloc[-1]
+        except:
+            return 0
 
-def load_excel(file):
-    """Carrega o Excel e trata erros."""
-    try:
-        xl = pd.ExcelFile(file)
-        return xl
-    except Exception as e:
-        st.error(f"Erro ao ler arquivo: {e}")
-        return None
+    indices['IBOV'] = get_single_ticker('^BVSP')
+    indices['S&P 500'] = get_single_ticker('^GSPC')
+    indices['Dólar'] = get_single_ticker('BRL=X')
+    indices['Bitcoin'] = get_single_ticker('BTC-USD')
+    
+    return indices
 
-# --- HEADER: ÍNDICES DE MERCADO ---
+def get_logo_url(ticker):
+    # Tenta buscar logo num repositório público usando o ticker (sem o número final as vezes ajuda, mas vamos testar direto)
+    # Fallback para um serviço de logos genérico
+    clean_ticker = str(ticker).replace('.SA', '').strip()
+    return f"https://raw.githubusercontent.com/thefintz/icon-project/master/stock_logos/{clean_ticker}.png"
+
+# --- HEADER: ÍNDICES (AGORA VISÍVEIS) ---
+st.title("✨ Aura Finance")
+st.caption("Intelligence Dashboard")
+
 indices = get_market_indices()
-col1, col2, col3, col4, col5 = st.columns([2, 1, 1, 1, 1])
 
-with col1:
-    st.title("🦅 Panorama Pro")
-with col2:
-    st.metric("🇧🇷 IBOV", f"{indices['IBOV']:,.0f} pts")
-with col3:
-    st.metric("🇺🇸 S&P 500", f"{indices['S&P 500']:,.0f} pts")
-with col4:
-    st.metric("💵 Dólar", f"R$ {indices['Dólar']:.2f}")
-with col5:
-    st.metric("₿ Bitcoin", f"US$ {indices['Bitcoin']:,.0f}")
+# Layout em 4 colunas fixas
+c1, c2, c3, c4 = st.columns(4)
+c1.metric("🇧🇷 IBOVESPA", f"{indices['IBOV']:,.0f} pts")
+c2.metric("🇺🇸 S&P 500", f"{indices['S&P 500']:,.0f} pts")
+c3.metric("💵 DÓLAR", f"R$ {indices['Dólar']:.2f}")
+c4.metric("₿ BITCOIN", f"US$ {indices['Bitcoin']:,.0f}")
 
-st.divider()
+st.markdown("---")
 
-# --- SIDEBAR (UPLOAD) ---
+# --- SIDEBAR ---
 with st.sidebar:
-    st.image("https://cdn-icons-png.flaticon.com/512/3135/3135715.png", width=50)
-    st.header("Sua Carteira")
-    uploaded_file = st.file_uploader("Atualizar Dados (.xlsx)", type=['xlsx'])
-    st.caption("Certifique-se que o arquivo tem as abas: Carteira, Proventos e Valuation.")
-
-# --- LÓGICA DE EXIBIÇÃO ---
+    st.header("Upload de Dados")
+    uploaded_file = st.file_uploader("Arquivo Excel (.xlsx)", type=['xlsx'])
 
 if not uploaded_file:
-    # TELA DE INÍCIO (SEM DADOS)
-    c1, c2 = st.columns([1, 1])
-    with c1:
-        st.info("👋 **Bem-vindo ao seu painel.**")
-        st.markdown("""
-        Para visualizar seus investimentos, projeções e valuation, arraste sua planilha Excel no menu lateral.
-        
-        **O painel processa automaticamente:**
-        * 📊 Sua posição atual e patrimônio.
-        * 💰 Histórico e projeção de dividendos.
-        * 🎯 Preço teto (Bazin) e margem de segurança.
-        """)
+    st.info("👆 Arraste sua planilha para começar.")
     st.stop()
 
-# --- PROCESSAMENTO DOS DADOS ---
-xls = load_excel(uploaded_file)
+# --- PROCESSAMENTO ---
+xls = pd.ExcelFile(uploaded_file)
 
-# 1. CARTEIRA
-try:
-    df_carteira = pd.read_excel(xls, 'Carteira')
-    # Identificar colunas dinamicamente
-    col_ativo = [c for c in df_carteira.columns if 'ATIVO' in c.upper()][0]
-    col_qtd = [c for c in df_carteira.columns if 'QUANTIDADE' in c.upper()][0]
-    col_saldo = [c for c in df_carteira.columns if 'SALDO' in c.upper() and 'TOTAL' not in c.upper()][0] # Saldo individual
-    
-    # Limpeza
-    df_carteira['C_ATIVO'] = df_carteira[col_ativo].astype(str).apply(lambda x: x.split('\n')[0]) # Tira o preço que vem junto no CSV
-    df_carteira['C_SALDO'] = df_carteira[col_saldo].apply(clean_currency)
-    df_carteira['C_QTD'] = df_carteira[col_qtd].apply(clean_currency)
-    df_carteira['C_PRECO_MEDIO'] = df_carteira['C_SALDO'] / df_carteira['C_QTD']
-    
-    patrimonio_total = df_carteira['C_SALDO'].sum()
-    
-    # Tabela Final
-    tabela_carteira = df_carteira[['C_ATIVO', 'C_QTD', 'C_PRECO_MEDIO', 'C_SALDO']].copy()
-    tabela_carteira = tabela_carteira.sort_values('C_SALDO', ascending=False)
-except Exception as e:
-    st.error(f"Erro ao ler aba 'Carteira': {e}")
-    patrimonio_total = 0
-    tabela_carteira = pd.DataFrame()
-
-# 2. PROVENTOS
-try:
-    df_prov = pd.read_excel(xls, 'Proventos')
-    # Pegar linha de 2025
-    row_2025 = df_prov[df_prov.iloc[:, 0].astype(str).str.contains("2025", na=False)].iloc[0]
-    meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
-    valores = row_2025[1:13].apply(clean_currency).values
-    
-    tabela_proventos = pd.DataFrame({'Mês': meses, 'Valor (R$)': valores})
-    total_prov_anual = tabela_proventos['Valor (R$)'].sum()
-except:
-    tabela_proventos = pd.DataFrame()
-    total_prov_anual = 0
-
-# 3. VALUATION (RADAR)
+# 1. VALUATION (Precisamos dele primeiro para pegar os nomes das empresas)
 try:
     df_val = pd.read_excel(xls, 'Valuation')
-    # Mapear colunas
-    cols = df_val.columns
-    c_ticker = [c for c in cols if 'TICKER' in c.upper()][0]
-    c_cotacao = [c for c in cols if 'COTAÇÃO' in c.upper()][0]
-    c_bazin = [c for c in cols if 'BAZIN' in c.upper()][0]
-    c_gordon = [c for c in cols if 'GORDON' in c.upper()][0]
     
-    # Limpeza
-    df_val['TICKER_F'] = df_val[c_ticker]
-    df_val['PRECO_F'] = df_val[c_cotacao].apply(clean_currency)
-    df_val['BAZIN_F'] = df_val[c_bazin].apply(clean_currency)
-    df_val['GORDON_F'] = df_val[c_gordon].apply(clean_currency)
+    # Mapeamento de Ticker -> Nome da Empresa
+    # Procura colunas
+    c_ticker_v = [c for c in df_val.columns if 'TICKER' in c.upper()][0]
+    c_empresa_v = [c for c in df_val.columns if 'EMPRESA' in c.upper()][0]
+    c_cotacao_v = [c for c in df_val.columns if 'COTAÇÃO' in c.upper()][0]
+    c_bazin_v = [c for c in df_val.columns if 'BAZIN' in c.upper()][0]
+
+    # Dicionário para traduzir ticker em nome
+    mapa_nomes = pd.Series(df_val[c_empresa_v].values, index=df_val[c_ticker_v]).to_dict()
+
+    # Processar Valuation
+    df_val['PRECO'] = df_val[c_cotacao_v].apply(clean_currency)
+    df_val['TETO'] = df_val[c_bazin_v].apply(clean_currency)
     
-    # Cálculo Correto da Margem: (Teto - Preço) / Teto
-    # Se preço for maior que teto, margem fica negativa
-    df_val['MARGEM_BAZIN'] = (df_val['BAZIN_F'] - df_val['PRECO_F']) / df_val['BAZIN_F']
+    # FÓRMULA CORRIGIDA: (Teto / Preço) - 1
+    df_val['MARGEM'] = (df_val['TETO'] / df_val['PRECO']) - 1
     
-    # Status
-    def get_status(margem):
-        if margem > 0.15: return "COMPRAR" # > 15% margem
-        if margem > 0: return "OBSERVAR"
-        return "AGUARDAR"
+    # Imagem (Logo)
+    # Como não temos coluna de logo, vamos usar uma coluna de imagem gerada pelo Streamlit depois
+    # mas aqui preparamos os dados
+    df_val['LOGO'] = df_val[c_ticker_v].apply(lambda x: f"https://ui-avatars.com/api/?name={x}&background=0D8ABC&color=fff&size=128&bold=true") 
     
-    df_val['STATUS'] = df_val['MARGEM_BAZIN'].apply(get_status)
+    val_final = df_val[[c_empresa_v, 'PRECO', 'TETO', 'MARGEM', 'LOGO']].copy()
+    val_final = val_final.sort_values('MARGEM', ascending=False)
     
-    tabela_valuation = df_val[['TICKER_F', 'PRECO_F', 'BAZIN_F', 'MARGEM_BAZIN', 'STATUS']].copy()
-    # Ordenar: As melhores oportunidades (maior margem) primeiro
-    tabela_valuation = tabela_valuation.sort_values('MARGEM_BAZIN', ascending=False)
 except Exception as e:
     st.error(f"Erro no Valuation: {e}")
-    tabela_valuation = pd.DataFrame()
+    val_final = pd.DataFrame()
+    mapa_nomes = {}
 
+# 2. CARTEIRA
+try:
+    df_cart = pd.read_excel(xls, 'Carteira')
+    c_ativo_c = [c for c in df_cart.columns if 'ATIVO' in c.upper()][0]
+    c_qtd_c = [c for c in df_cart.columns if 'QUANTIDADE' in c.upper()][0]
+    c_saldo_c = [c for c in df_cart.columns if 'SALDO' in c.upper() and 'TOTAL' not in c.upper()][0]
+
+    # Limpeza
+    df_cart['TICKER_LIMPO'] = df_cart[c_ativo_c].astype(str).apply(lambda x: x.split('\n')[0].strip())
+    
+    # Tenta pegar o nome completo do mapa. Se não tiver, usa o Ticker mesmo.
+    df_cart['NOME_FINAL'] = df_cart['TICKER_LIMPO'].map(mapa_nomes).fillna(df_cart['TICKER_LIMPO'])
+    
+    df_cart['SALDO_REAL'] = df_cart[c_saldo_c].apply(clean_currency)
+    df_cart['QTD_REAL'] = df_cart[c_qtd_c].apply(clean_currency)
+    df_cart['PRECO_MEDIO'] = df_cart['SALDO_REAL'] / df_cart['QTD_REAL']
+    
+    cart_final = df_cart[['NOME_FINAL', 'QTD_REAL', 'PRECO_MEDIO', 'SALDO_REAL']].copy()
+    cart_final = cart_final.sort_values('SALDO_REAL', ascending=False)
+    
+    patrimonio = df_cart['SALDO_REAL'].sum()
+except Exception as e:
+    st.error(f"Erro na Carteira: {e}")
+    patrimonio = 0
+    cart_final = pd.DataFrame()
+
+# 3. PROVENTOS
+try:
+    df_prov = pd.read_excel(xls, 'Proventos')
+    # Lógica para pegar 2025
+    row_2025 = df_prov[df_prov.iloc[:, 0].astype(str).str.contains("2025", na=False)].iloc[0]
+    vals = row_2025[1:13].apply(clean_currency).values
+    total_prov = vals.sum()
+    
+    # Tabela formatada
+    meses_nomes = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ']
+    df_prov_display = pd.DataFrame([vals], columns=meses_nomes)
+    
+except:
+    total_prov = 0
+    df_prov_display = pd.DataFrame()
 
 # --- DASHBOARD VISUAL ---
 
-# 1. CARTEIRA E ATIVOS
-st.subheader("📊 Patrimônio e Ativos")
-col_a, col_b = st.columns([1, 3])
+# SEÇÃO 1: RESUMO
+col_kpi1, col_kpi2 = st.columns(2)
+col_kpi1.metric("💰 Patrimônio Total", f"R$ {patrimonio:,.2f}")
+col_kpi2.metric("📅 Proventos 2025 (Estimado)", f"R$ {total_prov:,.2f}")
 
-with col_a:
-    st.metric("Patrimônio Investido", f"R$ {patrimonio_total:,.2f}")
-    st.metric("Total Proventos 2025", f"R$ {total_prov_anual:,.2f}")
-
-with col_b:
-    if not tabela_carteira.empty:
-        st.dataframe(
-            tabela_carteira,
-            column_config={
-                "C_ATIVO": "Ativo",
-                "C_QTD": st.column_config.NumberColumn("Qtd", format="%.0f"),
-                "C_PRECO_MEDIO": st.column_config.NumberColumn("Preço Médio", format="R$ %.2f"),
-                "C_SALDO": st.column_config.NumberColumn("Saldo Atual", format="R$ %.2f"),
-            },
-            hide_index=True,
-            use_container_width=True,
-            height=300
-        )
-
-st.divider()
-
-# 2. RADAR DE OPORTUNIDADES (VALUATION)
-st.subheader("🎯 Radar de Oportunidades (Método Bazin)")
-st.caption("Lista completa baseada no Preço Teto Bazin. Ordenado da maior margem para a menor.")
-
-if not tabela_valuation.empty:
+st.markdown("### 🏢 Minha Carteira")
+if not cart_final.empty:
     st.dataframe(
-        tabela_valuation,
+        cart_final,
         column_config={
-            "TICKER_F": st.column_config.TextColumn("Ativo", width="small"),
-            "PRECO_F": st.column_config.NumberColumn("Cotação Atual", format="R$ %.2f"),
-            "BAZIN_F": st.column_config.NumberColumn("Preço Teto (Bazin)", format="R$ %.2f"),
-            "MARGEM_BAZIN": st.column_config.NumberColumn(
-                "Margem Segurança",
-                format="%.1f%%", # Porcentagem com 1 casa decimal
-            ),
-            "STATUS": st.column_config.TextColumn("Recomendação"),
+            "NOME_FINAL": st.column_config.TextColumn("Empresa / Ativo"),
+            "QTD_REAL": st.column_config.NumberColumn("Qtd", format="%.0f"),
+            "PRECO_MEDIO": st.column_config.NumberColumn("Preço Médio", format="R$ %.2f"),
+            "SALDO_REAL": st.column_config.NumberColumn("Saldo Total", format="R$ %.2f"),
         },
         hide_index=True,
         use_container_width=True
     )
-    # Dica de cor (não funciona nativo no dataframe simples, mas o sort ajuda)
-    st.info("💡 **Dica:** Ativos no topo da lista possuem maior margem de segurança (estão mais 'baratos' em relação ao teto).")
 
 st.divider()
 
-# 3. PROVENTOS DETALHADOS
-st.subheader("💰 Calendário de Proventos (2025)")
-
-if not tabela_proventos.empty:
-    # Transpor para ficar mais bonito se quiser, mas lista vertical é melhor para ler valores
+# SEÇÃO 2: CALENDÁRIO DE DIVIDENDOS
+st.markdown("### 🗓️ Calendário de Recebimentos")
+if not df_prov_display.empty:
+    # Mostra como uma tabela horizontal clean
     st.dataframe(
-        tabela_proventos,
-        column_config={
-            "Mês": "Mês de Referência",
-            "Valor (R$)": st.column_config.NumberColumn("Valor Recebido", format="R$ %.2f"),
-        },
+        df_prov_display,
         hide_index=True,
         use_container_width=True
+    )
+
+st.divider()
+
+# SEÇÃO 3: RADAR (BAZIN)
+st.markdown("### 🎯 Radar de Oportunidades")
+st.caption("Margem calculada como: (Preço Teto / Cotação Atual) - 1")
+
+if not val_final.empty:
+    st.dataframe(
+        val_final,
+        column_config={
+            "LOGO": st.column_config.ImageColumn("Logo", width="small"),
+            "EMPRESA": st.column_config.TextColumn("Empresa"),
+            "PRECO": st.column_config.NumberColumn("Preço Atual", format="R$ %.2f"),
+            "TETO": st.column_config.NumberColumn("Preço Teto", format="R$ %.2f"),
+            "MARGEM": st.column_config.ProgressColumn(
+                "Margem de Segurança (%)",
+                format="%.1f%%",
+                min_value=-0.5, # Define limites para a barra ficar vermelha/verde
+                max_value=1.0,
+            ),
+        },
+        hide_index=True,
+        use_container_width=True,
+        height=600 # Altura maior para ver tudo
     )
