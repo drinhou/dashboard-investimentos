@@ -35,27 +35,25 @@ st.markdown("""
         div[data-testid="stMetricLabel"] p { color: #9ca3af !important; font-weight: 600; font-size: 0.9rem; }
         div[data-testid="stMetricValue"] div { color: #ffffff !important; font-weight: 700; font-size: 1.6rem; }
 
-        /* TABELAS (Design Limpo e Centralizado) */
+        /* TABELAS (Design Limpo) */
         div[data-testid="stDataFrame"] {
             background-color: #1e2129 !important;
             border: 1px solid #2d333b;
             border-radius: 8px;
         }
         
-        /* Centralizar Cabeçalhos */
+        /* Cabeçalhos */
         div[data-testid="stDataFrame"] div[role="columnheader"] {
             background-color: #262730;
             color: #cbd5e1;
-            justify-content: center;
             font-weight: bold;
             text-transform: uppercase;
             font-size: 0.85rem;
             border-bottom: 1px solid #444;
         }
         
-        /* Centralizar Células */
+        /* Células */
         div[data-testid="stDataFrame"] div[role="gridcell"] {
-            justify-content: center;
             color: #e0e0e0;
             font-size: 0.95rem;
         }
@@ -187,7 +185,7 @@ def load_user_file():
     
     # 2. Arquivos no GitHub (Persistência)
     if os.path.exists("PEC.xlsx"): return pd.ExcelFile("PEC.xlsx")
-    if os.path.exists("PEC - Página1.csv"): return pd.read_csv("PEC - Página1.csv") # Suporte ao seu CSV original
+    if os.path.exists("PEC - Página1.csv"): return pd.read_csv("PEC - Página1.csv") 
     
     return None
 
@@ -197,77 +195,69 @@ df_div = pd.DataFrame()
 
 if file_data is not None:
     try:
-        # Se for ExcelFile, precisa achar a aba certa. Se for DataFrame (CSV), já é os dados.
+        # Lógica para tratar Excel ou CSV
         if isinstance(file_data, pd.ExcelFile):
-            # Procura aba que tenha BAZIN
             target_df = pd.DataFrame()
             for sheet in file_data.sheet_names:
                 temp = pd.read_excel(file_data, sheet)
-                # Verifica se tem coluna BAZIN (mesmo que minúscula)
                 cols_upper = [str(c).upper() for c in temp.columns]
                 if any("BAZIN" in c for c in cols_upper):
                     target_df = temp
                     break
         else:
-            target_df = file_data # Já é o CSV lido
+            target_df = file_data # Já é o CSV
 
         if not target_df.empty:
-            # Padronizar nomes das colunas para achar fácil
             target_df.columns = [str(c).strip().upper() for c in target_df.columns]
             cols = target_df.columns
             
-            # Mapeamento Inteligente (Procura palavras chaves nas colunas)
-            # Ex: Se achar "DY 2026E", usa ela como DY.
+            # Mapeamento Inteligente
             col_ticker = next((c for c in cols if 'TICKER' in c), None)
             col_empresa = next((c for c in cols if 'EMPRESA' in c), None)
             col_bazin = next((c for c in cols if 'BAZIN' in c), None)
             col_dy = next((c for c in cols if 'DY' in c), None)
-            col_dpa = next((c for c in cols if 'DPA' in c), None) # Opcional
+            col_dpa = next((c for c in cols if 'DPA' in c), None)
 
             if col_ticker and col_bazin:
-                # Tratamento de Dados
+                # Tratamento
                 target_df['TICKER_F'] = target_df[col_ticker].astype(str).str.strip().str.upper()
                 target_df['BAZIN_F'] = target_df[col_bazin].apply(clean_currency)
                 
-                # DY e DPA
                 if col_dy: target_df['DY_F'] = target_df[col_dy].apply(clean_currency)
                 else: target_df['DY_F'] = 0.0
                 
                 if col_dpa: target_df['DPA_F'] = target_df[col_dpa].apply(clean_currency)
                 else: target_df['DPA_F'] = 0.0
                 
-                # Busca Preço Online
+                # Preços Online
                 tickers = target_df['TICKER_F'].unique().tolist()
                 live_prices = get_br_prices(tickers)
                 target_df['PRECO_F'] = target_df['TICKER_F'].map(live_prices).fillna(0)
                 
-                # Margem ((Teto - Preço) / Preço)
+                # Margem
                 target_df['MARGEM_F'] = target_df.apply(
                     lambda x: ((x['BAZIN_F'] - x['PRECO_F']) / x['PRECO_F'] * 100) if x['PRECO_F'] > 0 else -999, 
                     axis=1
                 )
                 
-                # Logo e Nome
+                # Visual
                 target_df['LOGO_F'] = target_df['TICKER_F'].apply(get_logo_url)
                 if col_empresa:
                     target_df['NOME_F'] = target_df[col_empresa]
                 else:
                     target_df['NOME_F'] = target_df['TICKER_F']
 
-                # --- TABELAS FINAIS ---
-                
-                # 1. RADAR (Onde tem preço teto)
+                # Tabelas Finais
                 df_radar = target_df[target_df['BAZIN_F'] > 0].copy()
                 df_radar = df_radar[['LOGO_F', 'NOME_F', 'BAZIN_F', 'PRECO_F', 'MARGEM_F']]
                 df_radar = df_radar.sort_values('MARGEM_F', ascending=False)
                 
-                # 2. DIVIDENDOS (Onde tem DY)
                 df_div = target_df[target_df['DY_F'] > 0].copy()
                 df_div = df_div[['LOGO_F', 'NOME_F', 'DPA_F', 'DY_F']]
                 df_div = df_div.sort_values('DY_F', ascending=False)
             
             else:
-                st.error("Colunas TICKER ou BAZIN não encontradas no arquivo.")
+                st.error("Erro: Colunas TICKER ou BAZIN não encontradas.")
                 
     except Exception as e:
         st.error(f"Erro ao processar arquivo: {e}")
@@ -279,23 +269,22 @@ if not df_radar.empty:
     st.dataframe(
         df_radar,
         column_config={
-            "LOGO_F": st.column_config.ImageColumn("Logo", width="small", alignment="center"),
-            "NOME_F": st.column_config.TextColumn("Ativo", width="medium", alignment="center"),
-            "BAZIN_F": st.column_config.NumberColumn("Preço Justo (Teto)", format="R$ %.2f", alignment="center"),
-            "PRECO_F": st.column_config.NumberColumn("Cotação Atual", format="R$ %.2f", alignment="center"),
+            "LOGO_F": st.column_config.ImageColumn("Logo", width="small"),
+            "NOME_F": st.column_config.TextColumn("Ativo", width="medium"),
+            "BAZIN_F": st.column_config.NumberColumn("Preço Justo (Teto)", format="R$ %.2f"),
+            "PRECO_F": st.column_config.NumberColumn("Cotação Atual", format="R$ %.2f"),
             "MARGEM_F": st.column_config.ProgressColumn(
-                "Potencial (Margem)",
+                "Margem de Segurança",
                 format="%.1f%%",
                 min_value=-50, max_value=50,
-                width="medium",
-                alignment="center"
+                width="medium"
             )
         },
         hide_index=True,
         use_container_width=True
     )
 else:
-    st.info("Aguardando arquivo... Carregue 'PEC - Página1.csv' ou 'PEC.xlsx'.")
+    st.info("Aguardando arquivo... Carregue 'PEC.xlsx' ou 'PEC - Página1.csv'.")
 
 st.divider()
 
@@ -306,10 +295,10 @@ if not df_div.empty:
     st.dataframe(
         df_div,
         column_config={
-            "LOGO_F": st.column_config.ImageColumn("Logo", width="small", alignment="center"),
-            "NOME_F": st.column_config.TextColumn("Ativo", width="medium", alignment="center"),
-            "DPA_F": st.column_config.NumberColumn("Pagamento/Ação", format="R$ %.2f", alignment="center"),
-            "DY_F": st.column_config.NumberColumn("Yield Anual (DY)", format="%.2f %%", alignment="center"),
+            "LOGO_F": st.column_config.ImageColumn("Logo", width="small"),
+            "NOME_F": st.column_config.TextColumn("Ativo", width="medium"),
+            "DPA_F": st.column_config.NumberColumn("Dividendo por Ação", format="R$ %.2f"),
+            "DY_F": st.column_config.NumberColumn("Dividend Yield", format="%.2f %%"),
         },
         hide_index=True,
         use_container_width=True
