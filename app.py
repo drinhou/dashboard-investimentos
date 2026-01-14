@@ -1,4 +1,4 @@
-import streamlit as st
+\import streamlit as st
 import pandas as pd
 import yfinance as yf
 import os
@@ -53,7 +53,7 @@ st.markdown("""
             text-align: center; 
         }
         
-        /* Células Centralizadas (Hack CSS Flexbox) */
+        /* Células Centralizadas */
         div[data-testid="stDataFrame"] div[role="gridcell"] {
             display: flex;
             justify-content: center;
@@ -68,7 +68,6 @@ st.markdown("""
 # --- 3. FUNÇÕES DE TRATAMENTO ---
 
 def clean_currency(x):
-    """Limpa formatação financeira"""
     if isinstance(x, (int, float)): return float(x)
     if isinstance(x, str):
         clean = x.replace('R$', '').replace('.', '').replace(',', '.').replace('%', '').strip()
@@ -77,7 +76,6 @@ def clean_currency(x):
     return 0.0
 
 def clean_dy_percentage(x):
-    """Corrige DY decimal (0.11 -> 11.0%)"""
     val = clean_currency(x)
     if val > 0 and val < 1.0:
         return val * 100
@@ -85,33 +83,60 @@ def clean_dy_percentage(x):
 
 def get_logo_url(ticker):
     """
-    Busca logos com CDN rápido e Correção de Tickers novos.
+    ESTRATÉGIA INFALÍVEL:
+    Usa o serviço de Favicon do Google baseado no site oficial da empresa.
     """
     if not isinstance(ticker, str): return ""
     clean = ticker.replace('.SA', '').strip().upper()
     
-    # --- DICIONÁRIO DE CORREÇÃO (ATIVOS QUE MUDARAM OU TEM LOGO DIFÍCIL) ---
-    mapa_logos = {
-        'ISAE4': 'TRPL4',  # ISA CTEEP mudou ticker, logo antiga é TRPL4
-        'CMIG4': 'CMIG4',
-        'BBSE3': 'BBSE3',
-        'BBAS3': 'BBAS3',
-        'ITUB4': 'ITUB4',
-        'SAPR4': 'SAPR11', # Tenta unit se preferencial falhar
-        'BTC': 'BTC',
-        'BITCOIN': 'BTC'
+    # 1. Mapeamento Manual para Garantir (Principais da sua planilha)
+    # Ticker -> Domínio Oficial
+    domain_map = {
+        'BBAS3': 'bb.com.br',
+        'BBSE3': 'bbseguridaderi.com.br',
+        'ITUB4': 'itau.com.br',
+        'BBDC4': 'bradesco.com.br',
+        'SANB11': 'santander.com.br',
+        'PETR4': 'petrobras.com.br',
+        'VALE3': 'vale.com',
+        'WEGE3': 'weg.net',
+        'CMIG4': 'cemig.com.br',
+        'SAPR4': 'sanepar.com.br',
+        'SAPR11': 'sanepar.com.br',
+        'ISAE4': 'isacteep.com.br', # Nova TRPL4
+        'TRPL4': 'isacteep.com.br',
+        'CXSE3': 'caixaseguridade.com.br',
+        'ODPV3': 'odontoprev.com.br',
+        'TAEE11': 'taesa.com.br',
+        'KLBN11': 'klabin.com.br',
+        'SUZB3': 'suzano.com.br',
+        'JBSS3': 'jbs.com.br',
+        'ABEV3': 'ambev.com.br',
+        'EGIE3': 'engie.com.br',
+        'VIVT3': 'vivo.com.br',
+        'TIMS3': 'tim.com.br',
+        'B3SA3': 'b3.com.br',
+        'XP': 'xp.com.br',
+        'NU': 'nubank.com.br',
+        'MXRF11': 'xp.com.br', # Gestora
+        'HGLG11': 'cshg.com.br',
+        'KNCA11': 'kinea.com.br',
+        'KNIP11': 'kinea.com.br',
+        'XPLG11': 'xp.com.br',
+        'VISC11': 'vinci-partners.com'
     }
-    
-    # Verifica se precisa trocar o ticker para achar a logo
-    search_ticker = mapa_logos.get(clean, clean)
 
-    # Cripto (CoinGecko)
-    if search_ticker in ['BTC', 'BITCOIN']: return "https://assets.coingecko.com/coins/images/1/small/bitcoin.png"
-    if search_ticker in ['ETH', 'ETHEREUM']: return "https://assets.coingecko.com/coins/images/279/small/ethereum.png"
-    if search_ticker in ['SOL', 'SOLANA']: return "https://assets.coingecko.com/coins/images/4128/small/solana.png"
-    
-    # Ações B3 (Usando JSDELIVR - CDN Mais rápido que GitHub Raw)
-    return f"https://cdn.jsdelivr.net/gh/thefintz/icon-project@master/stock_logos/{search_ticker}.png"
+    # Cripto (CoinGecko é robusto)
+    if clean in ['BTC', 'BITCOIN']: return "https://assets.coingecko.com/coins/images/1/small/bitcoin.png"
+    if clean in ['ETH', 'ETHEREUM']: return "https://assets.coingecko.com/coins/images/279/small/ethereum.png"
+    if clean in ['SOL', 'SOLANA']: return "https://assets.coingecko.com/coins/images/4128/small/solana.png"
+
+    # Se estiver no mapa, usa o Google Favicon (Alta qualidade e confiabilidade)
+    if clean in domain_map:
+        return f"https://www.google.com/s2/favicons?domain={domain_map[clean]}&sz=128"
+
+    # Fallback: Tenta repositório genérico se não estiver na lista VIP
+    return f"https://cdn.jsdelivr.net/gh/thefintz/icon-project@master/stock_logos/{clean}.png"
 
 @st.cache_data(ttl=60)
 def get_full_market_data():
@@ -198,7 +223,7 @@ def show_market_list(col, title, df):
                 "Nome": st.column_config.TextColumn("Ativo"),
                 "Preço": st.column_config.NumberColumn("Cotação", format="%.2f"),
                 "Var %": st.column_config.NumberColumn("Var %", format="%.2f %%"),
-                "Var R$": st.column_config.NumberColumn("Var R$", format="%.2f"), # CORRIGIDO AQUI
+                "Var R$": st.column_config.NumberColumn("Var R$", format="%.2f"),
             },
             hide_index=True,
             use_container_width=True
@@ -253,11 +278,9 @@ if file_data is not None:
                 target_df['TICKER_F'] = target_df[col_ticker].astype(str).str.strip().str.upper()
                 target_df['BAZIN_F'] = target_df[col_bazin].apply(clean_currency)
                 
-                # DY
                 if col_dy: target_df['DY_F'] = target_df[col_dy].apply(clean_dy_percentage)
                 else: target_df['DY_F'] = 0.0
                 
-                # DPA
                 if col_dpa: target_df['DPA_F'] = target_df[col_dpa].apply(clean_currency)
                 else: target_df['DPA_F'] = 0.0
                 
