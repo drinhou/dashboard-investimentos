@@ -13,16 +13,14 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# --- 2. CSS PREMIUM (TEMA VERDE & SMOOTH SCROLL) ---
+# --- 2. CSS PREMIUM (VERDE TOTAL & CENTRALIZAÇÃO) ---
 st.markdown("""
     <style>
-        /* SCROLL SUAVE OBRIGATÓRIO NO HTML */
-        html {
-            scroll-behavior: smooth !important;
-        }
+        /* SCROLL SUAVE */
+        html { scroll-behavior: smooth !important; }
 
         /* Fundo e Fonte */
-        .stApp { background-color: #0c120f; color: #e0e0e0; } /* Fundo levemente esverdeado escuro */
+        .stApp { background-color: #0c120f; color: #e0e0e0; }
         * { font-family: 'Segoe UI', 'Roboto', sans-serif; }
         
         /* HEADER CENTRALIZADO */
@@ -36,7 +34,7 @@ st.markdown("""
         .main-title {
             font-size: 3.5rem;
             font-weight: 800;
-            background: -webkit-linear-gradient(45deg, #10b981, #34d399); /* Degradê Verde */
+            background: -webkit-linear-gradient(45deg, #10b981, #34d399); /* Verde Degradê */
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             margin: 0;
@@ -62,11 +60,9 @@ st.markdown("""
             display: block;
             margin-bottom: 20px;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative;
-            overflow: hidden;
         }
         .nav-card:hover {
-            border-color: #10b981; /* Verde ao passar o mouse */
+            border-color: #10b981; /* Verde no Hover */
             transform: translateY(-3px);
             box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.1);
         }
@@ -74,22 +70,25 @@ st.markdown("""
         .nav-title { font-weight: 700; font-size: 1rem; display: block; color: #e5e7eb; }
         .nav-desc { font-size: 0.75rem; color: #6b7280; display: block; margin-top: 4px; }
 
-        /* TABELAS - DESIGN CLEAN */
+        /* --- TABELAS: CENTRALIZAÇÃO TOTAL (ESTILO EXCEL) --- */
         div[data-testid="stDataFrame"] {
             border: 1px solid #1f2937;
             border-radius: 12px;
             overflow: hidden;
         }
+        /* Cabeçalho Centralizado */
         div[data-testid="stDataFrame"] div[role="columnheader"] {
-            background-color: #141f1b; /* Verde muito escuro */
-            color: #6ee7b7; /* Verde claro texto */
+            background-color: #141f1b;
+            color: #6ee7b7;
             font-size: 12px;
             font-weight: 700;
             text-transform: uppercase;
             border-bottom: 2px solid #064e3b;
             text-align: center !important;
             justify-content: center !important;
+            display: flex;
         }
+        /* Células Centralizadas (Horizontal e Vertical) */
         div[data-testid="stDataFrame"] div[role="gridcell"] {
             display: flex;
             justify-content: center !important;
@@ -97,6 +96,7 @@ st.markdown("""
             text-align: center !important;
             font-size: 13px;
             background-color: #0c120f;
+            height: 100%; /* Garante altura total */
         }
         
         /* LOGOS */
@@ -107,23 +107,25 @@ st.markdown("""
             background-color: #fff;
             width: 28px;
             height: 28px;
+            display: block;
+            margin: auto; /* Garante centro da imagem */
         }
 
-        /* TÍTULOS DE SEÇÃO */
+        /* TÍTULOS DE SEÇÃO (RISCO VERDE) */
         .section-header {
             font-size: 1.4rem;
             font-weight: 700;
             color: #f3f4f6;
             margin-top: 50px;
             margin-bottom: 20px;
-            border-left: 5px solid #10b981; /* Barra Verde */
+            border-left: 5px solid #10b981; /* CORRIGIDO PARA VERDE */
             padding-left: 20px;
             display: flex;
             align-items: center;
             justify-content: space-between;
         }
         
-        /* BADGES (Etiquetas) */
+        /* BADGES */
         .status-badge {
             background-color: #064e3b;
             color: #34d399;
@@ -135,14 +137,16 @@ st.markdown("""
             letter-spacing: 0.5px;
         }
         
-        /* TIMESTAMP (Rodapé pequeno) */
-        .timestamp {
-            font-size: 0.7rem;
-            color: #4b5563;
-            text-align: right;
-            margin-top: -10px;
-            margin-bottom: 20px;
-            font-style: italic;
+        /* DISCLAIMER FOOTER */
+        .footer-disclaimer {
+            margin-top: 80px;
+            padding: 30px;
+            border-top: 1px solid #1f2937;
+            text-align: center;
+            color: #6b7280;
+            font-size: 0.8rem;
+            background-color: #111a16;
+            border-radius: 12px;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -150,15 +154,12 @@ st.markdown("""
 # --- 3. FUNÇÕES ---
 
 def get_time_greeting():
-    # Pega hora de Brasilia
     tz = pytz.timezone('America/Sao_Paulo')
     now = datetime.datetime.now(tz)
     h = now.hour
-    
     greeting = "Boa noite"
     if 5 <= h < 12: greeting = "Bom dia"
     elif 12 <= h < 18: greeting = "Boa tarde"
-    
     time_str = now.strftime("%H:%M")
     return greeting, time_str
 
@@ -179,7 +180,6 @@ def get_logo_url(ticker):
     if not isinstance(ticker, str): return ""
     clean = ticker.replace('.SA', '').strip().upper()
     
-    # SITES (MANUAL)
     sites = {
         'CXSE3': 'caixaseguradora.com.br', 'BBSE3': 'bbseguros.com.br', 'ODPV3': 'odontoprev.com.br',
         'BBAS3': 'bb.com.br', 'ABCB4': 'abcbrasil.com.br', 'ITUB4': 'itau.com.br',
@@ -202,7 +202,7 @@ def get_market_data_distributed():
     groups = {
         'USA': { 'S&P 500': '^GSPC', 'NASDAQ': '^IXIC', 'DOW JONES': '^DJI', 'VIX (Medo)': '^VIX' },
         'BRASIL': { 'IBOVESPA': '^BVSP', 'IFIX (FIIs)': 'IFIX.SA', 'VALE': 'VALE3.SA', 'PETROBRAS': 'PETR4.SA' },
-        'MOEDAS': { 'DÓLAR': 'BRL=X', 'EURO': 'EURBRL=X', 'LIBRA': 'GBPBRL=X', 'DXY Global': 'DX-Y.NYB' }, # Libra subiu
+        'MOEDAS': { 'DÓLAR': 'BRL=X', 'EURO': 'EURBRL=X', 'LIBRA': 'GBPBRL=X', 'DXY Global': 'DX-Y.NYB' },
         'COMMODITIES': { 'OURO': 'GC=F', 'PRATA': 'SI=F', 'COBRE': 'HG=F', 'PETRÓLEO': 'BZ=F' },
         'CRIPTO': { 'BITCOIN': 'BTC-USD', 'ETHEREUM': 'ETH-USD', 'SOLANA': 'SOL-USD', 'BNB': 'BNB-USD' }
     }
@@ -214,11 +214,10 @@ def get_market_data_distributed():
             data = yf.download(tickers, period="5d", progress=False)['Close']
             for name, ticker in items.items():
                 try:
-                    # Lógica robusta para evitar erro se ticker não existir
                     series = pd.Series()
                     if len(tickers) > 1 and ticker in data.columns:
                         series = data[ticker].dropna()
-                    elif isinstance(data, pd.Series): # Se baixou só 1
+                    elif isinstance(data, pd.Series):
                         series = data.dropna()
                         
                     if len(series) >= 2:
@@ -249,7 +248,7 @@ def get_br_prices(ticker_list):
 
 greeting_text, time_text = get_time_greeting()
 
-# Header Centralizado
+# Header
 st.markdown(f"""
     <div class='main-header'>
         <h1 class='main-title'>💸 Dinheiro Data</h1>
@@ -257,7 +256,7 @@ st.markdown(f"""
     </div>
 """, unsafe_allow_html=True)
 
-# NAVEGAÇÃO
+# Navegação
 nav1, nav2, nav3 = st.columns(3)
 with nav1:
     st.markdown("""<a href='#panorama' class='nav-card'>
@@ -292,14 +291,12 @@ st.markdown("""
 def show_mini_table(col, title, df):
     col.write(f"**{title}**")
     if not df.empty:
-        # UX: Cores de Variação (Verde/Vermelho/Cinza)
         def color_var(val):
-            if val > 0: return 'color: #34d399; font-weight: bold;' # Verde Esmeralda
-            if val < 0: return 'color: #f87171; font-weight: bold;' # Vermelho
-            return 'color: #6b7280;' # Cinza
+            if val > 0: return 'color: #34d399; font-weight: bold;'
+            if val < 0: return 'color: #f87171; font-weight: bold;'
+            return 'color: #6b7280;'
             
         styled_df = df.style.format({ "Preço": "{:.2f}", "Var%": "{:+.2f}%" }).map(color_var, subset=['Var%'])
-        
         col.dataframe(
             styled_df,
             column_config={
@@ -311,7 +308,7 @@ def show_mini_table(col, title, df):
             use_container_width=True
         )
 
-# Layout Panorama Simétrico
+# Layout Panorama
 r1c1, r1c2, r1c3 = st.columns(3)
 with r1c1: show_mini_table(r1c1, "🇺🇸 Índices EUA", M['USA'])
 with r1c2: show_mini_table(r1c2, "🇧🇷 Índices Brasil", M['BRASIL'])
@@ -324,7 +321,7 @@ with r2c1: show_mini_table(r2c1, "🛢️ Commodities", M['COMMODITIES'])
 with r2c2: show_mini_table(r2c2, "💎 Criptoativos", M['CRIPTO'])
 
 
-# --- CARGA DADOS ---
+# --- CARGA DE DADOS ---
 df_radar, df_div = pd.DataFrame(), pd.DataFrame()
 uploaded = st.sidebar.file_uploader("📂 Importar Dados", type=['xlsx', 'csv'])
 file_data = None
@@ -377,16 +374,15 @@ count_opp = len(df_radar[df_radar['MARGEM_VAL'] > 10]) if not df_radar.empty els
 st.markdown(f"""
 <div class='section-header'>
     <span>🎯 Radar de Preço Justo</span>
-    <span class='status-badge'>{count_opp} Oportunidades com Margem > 10%</span>
+    <span class='status-badge'>{count_opp} Oportunidades (>10%)</span>
 </div>
 """, unsafe_allow_html=True)
 
 if not df_radar.empty:
-    # UX: Escala de Cores Rígida
     def style_margin(v):
-        if v > 10: return 'color: #34d399; font-weight: bold;' # Verde (>10)
-        if v < 0: return 'color: #f87171; font-weight: bold;'  # Vermelho (<0)
-        return 'color: #9ca3af;'                               # Neutro (0-10)
+        if v > 10: return 'color: #34d399; font-weight: bold;'
+        if v < 0: return 'color: #f87171; font-weight: bold;'
+        return 'color: #9ca3af;'
 
     styled_radar = df_radar.style.format({
         "BAZIN_F": "R$ {:.2f}", "PRECO_F": "R$ {:.2f}", "MARGEM_VAL": "{:+.1f}%"
@@ -395,7 +391,7 @@ if not df_radar.empty:
     st.dataframe(
         styled_radar,
         column_config={
-            "Logo": st.column_config.ImageColumn("", width="small"),
+            "Logo": st.column_config.ImageColumn(""),
             "Ativo": st.column_config.TextColumn("Ativo"),
             "BAZIN_F": st.column_config.NumberColumn("Preço Teto"),
             "PRECO_F": st.column_config.NumberColumn("Cotação"),
@@ -404,7 +400,6 @@ if not df_radar.empty:
         hide_index=True,
         use_container_width=True
     )
-    st.markdown(f"<div class='timestamp'>Última verificação: {time_text}</div>", unsafe_allow_html=True)
 
 # --- 3. DIVIDENDOS ---
 st.markdown("<div id='dividendos'></div>", unsafe_allow_html=True)
@@ -413,14 +408,14 @@ count_dy = len(df_div[df_div['DY_F'] > 8]) if not df_div.empty else 0
 st.markdown(f"""
 <div class='section-header'>
     <span>💰 Dividendos Projetados</span>
-    <span class='status-badge'>{count_dy} Ativos com DY > 8%</span>
+    <span class='status-badge'>{count_dy} Ativos (>8%)</span>
 </div>
 """, unsafe_allow_html=True)
 
 if not df_div.empty:
     def style_dy(v):
-        if v > 8: return 'color: #34d399; font-weight: bold;' # Verde (>8)
-        return 'color: #9ca3af;' # Neutro
+        if v > 8: return 'color: #34d399; font-weight: bold;'
+        return 'color: #9ca3af;'
 
     styled_div = df_div.style.format({
         "DPA_F": "R$ {:.2f}", "DY_F": "{:.2f}%"
@@ -429,7 +424,7 @@ if not df_div.empty:
     st.dataframe(
         styled_div,
         column_config={
-            "Logo": st.column_config.ImageColumn("", width="small"),
+            "Logo": st.column_config.ImageColumn(""),
             "Ativo": st.column_config.TextColumn("Ativo"),
             "DPA_F": st.column_config.NumberColumn("Div. / Ação"),
             "DY_F": st.column_config.TextColumn("Yield Projetado"),
@@ -437,3 +432,15 @@ if not df_div.empty:
         hide_index=True,
         use_container_width=True
     )
+
+# --- FOOTER: DISCLAIMER ---
+st.markdown("""
+    <div class='footer-disclaimer'>
+        <strong>⚠️ ISENÇÃO DE RESPONSABILIDADE</strong><br><br>
+        As informações, dados e indicadores apresentados nesta plataforma são obtidos de fontes públicas e cálculos automatizados. 
+        Este dashboard tem caráter estritamente educativo e informativo.<br>
+        <strong>Nenhum conteúdo aqui deve ser interpretado como recomendação de compra, venda ou manutenção de ativos mobiliários.</strong><br>
+        Investimentos em renda variável estão sujeitos a riscos de mercado e perda de capital. 
+        Realize sua própria análise ou consulte um profissional certificado antes de tomar decisões financeiras.
+    </div>
+""", unsafe_allow_html=True)
