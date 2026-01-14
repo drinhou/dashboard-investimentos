@@ -13,13 +13,13 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# ========== 2. DESIGN SYSTEM "ONYX" (CSS OTIMIZADO) ==========
+# ========== 2. CSS "ONYX" (VISUAL + MOBILE + FAQ) ==========
 st.markdown("""
     <style>
         /* FONTE */
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
 
-        /* VARIÁVEIS VISUAIS */
+        /* VARIÁVEIS */
         :root {
             --bg-deep: #050505;
             --glass-bg: rgba(20, 20, 20, 0.6);
@@ -28,7 +28,7 @@ st.markdown("""
             --text-main: #ffffff;
         }
 
-        /* RESET GERAL */
+        /* RESET */
         html, body, [class*="css"] {
             font-family: 'Inter', sans-serif;
             background-color: var(--bg-deep);
@@ -36,13 +36,12 @@ st.markdown("""
             scroll-behavior: smooth !important;
         }
         
-        /* LIMPEZA DE INTERFACE */
         #MainMenu, footer, header { visibility: hidden; }
         [data-testid="stElementToolbar"] { display: none !important; }
         .stMarkdown a.anchor-link { display: none !important; }
         .block-container { padding-top: 1rem; padding-bottom: 3rem; }
 
-        /* --- HERO (CABEÇALHO) --- */
+        /* HERO HEADER */
         .hero-container {
             text-align: center;
             padding: 60px 20px 40px 20px;
@@ -67,7 +66,7 @@ st.markdown("""
             animation: pulse 2s infinite;
         }
 
-        /* --- CARDS DE NAVEGAÇÃO --- */
+        /* CARDS */
         .glass-card {
             background: var(--glass-bg);
             backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
@@ -81,7 +80,7 @@ st.markdown("""
         .card-title { font-size: 1.1rem; font-weight: 700; color: #fff; display: block; margin-bottom: 4px; }
         .card-desc { font-size: 0.8rem; color: #777; display: block; }
 
-        /* --- TÍTULOS DE SEÇÃO --- */
+        /* SEÇÕES */
         .section-box {
             margin-top: 50px; margin-bottom: 20px; padding-left: 15px; padding-right: 15px;
             border-left: 4px solid var(--neon-green);
@@ -97,7 +96,7 @@ st.markdown("""
         }
         .section-desc-text { margin-left: 20px; margin-bottom: 20px; color:#666; font-size:0.85rem; max-width:800px; }
 
-        /* --- TABELAS (ESTILO TERMINAL) --- */
+        /* TABELAS */
         div[data-testid="stDataFrame"] {
             background-color: #080808 !important; border: 1px solid #1f1f1f !important; border-radius: 12px;
         }
@@ -112,7 +111,7 @@ st.markdown("""
             font-size: 13px !important; font-weight: 500 !important;
             border-bottom: 1px solid #161616 !important;
             display: flex; justify-content: center !important; align-items: center !important;
-            pointer-events: none !important; /* Bloqueia seleção */
+            pointer-events: none !important;
         }
         div[data-testid="stDataFrame"] div[role="gridcell"] > div {
             display: flex; justify-content: center !important; align-items: center !important;
@@ -124,31 +123,53 @@ st.markdown("""
             padding: 1px; display: block; margin: 0 auto;
         }
 
-        /* --- INPUTS DE BUSCA --- */
+        /* FAQ STYLING (GLASSMORPHISM) */
+        .streamlit-expanderHeader {
+            background-color: rgba(20, 20, 20, 0.6) !important;
+            border: 1px solid var(--glass-border) !important;
+            color: #fff !important;
+            font-family: 'Inter', sans-serif !important;
+            border-radius: 12px !important;
+            margin-bottom: 10px !important;
+            transition: all 0.3s ease !important;
+        }
+        .streamlit-expanderHeader:hover {
+            border-color: var(--neon-green) !important;
+            color: var(--neon-green) !important;
+            background-color: rgba(0, 255, 157, 0.05) !important;
+        }
+        .streamlit-expanderContent {
+            background-color: transparent !important;
+            color: #999 !important;
+            border: none !important;
+            padding-left: 20px !important;
+            font-size: 0.9rem !important;
+        }
+        .streamlit-expanderHeader svg { fill: #666 !important; }
+        .streamlit-expanderHeader:hover svg { fill: var(--neon-green) !important; }
+
+        /* INPUTS */
         div[data-baseweb="base-input"] {
             background-color: #0a0a0a !important; border: 1px solid #333 !important; border-radius: 8px !important;
         }
         div[data-baseweb="base-input"]:focus-within { border-color: var(--neon-green) !important; }
         input { color: white !important; }
 
-        /* --- FOOTER --- */
+        /* FOOTER */
         .legal-footer {
-            margin-top: 80px; padding: 30px 20px; border-top: 1px solid #222;
+            margin-top: 60px; padding: 30px 20px; border-top: 1px solid #222;
             text-align: center; font-size: 0.7rem; color: #444; background: #050505; line-height: 1.5;
         }
 
-        /* --- MOBILE RESPONSIVE FIX --- */
+        /* MOBILE FIXES */
         @media (max-width: 768px) {
             .hero-container { padding: 40px 15px 20px 15px; }
             .hero-title { font-size: 2.2rem; }
             .hero-subtitle { font-size: 0.7rem; flex-wrap: wrap; }
-            
             .glass-card { padding: 15px; margin-bottom: 8px; min-height: 90px; }
             .card-icon { font-size: 1.4rem; margin-bottom: 5px; }
             .card-title { font-size: 0.9rem; }
             .card-desc { display: none; }
-            
-            /* Correção de Títulos Sobrepostos */
             .section-box { 
                 flex-direction: column !important; align-items: flex-start !important;
                 gap: 8px; padding-bottom: 15px; height: auto;
@@ -156,15 +177,11 @@ st.markdown("""
             .section-title { font-size: 1.2rem; }
             .section-badge { align-self: flex-start; font-size: 0.65rem; padding: 4px 8px; }
             .section-desc-text { margin-left: 10px; font-size: 0.8rem; margin-bottom: 15px; }
-            
-            /* Tabela Compacta */
             div[data-testid="stDataFrame"] div[role="columnheader"] { font-size: 10px !important; padding: 8px 2px !important; }
             div[data-testid="stDataFrame"] div[role="gridcell"] { font-size: 11px !important; padding: 8px 2px !important; }
             div[data-testid="stDataFrame"] img { width: 20px !important; height: 20px !important; }
-            
             .block-container { padding-left: 0.5rem; padding-right: 0.5rem; }
         }
-        
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
     </style>
 """, unsafe_allow_html=True)
@@ -420,6 +437,42 @@ if not df_div.empty:
         column_config={"Logo": st.column_config.ImageColumn(""), "Ativo": st.column_config.TextColumn("Ativo"), "TICKER_F": None, "DPA_F": st.column_config.TextColumn("Div. / Ação"), "DY_F": st.column_config.TextColumn("Yield Projetado")},
         hide_index=True, use_container_width=True
     )
+
+# --- FAQ ---
+st.markdown("<div style='margin-top: 80px;'></div>", unsafe_allow_html=True)
+st.markdown("""
+<div class='section-box'>
+    <div class='section-title'>Dúvidas Frequentes</div>
+    <div class='section-badge'>FAQ</div>
+</div>
+""", unsafe_allow_html=True)
+
+faq_data = [
+    {
+        "q": "Como é calculado o Preço Teto (Método Bazin)?",
+        "a": "Utilizamos a metodologia clássica de Décio Bazin. O cálculo baseia-se em dividir o dividendo projetado (ou médio) por uma taxa de retorno mínima exigida. Se o resultado for superior à cotação atual, o ativo é considerado descontado segundo este modelo."
+    },
+    {
+        "q": "De onde vêm os dados apresentados?",
+        "a": "As cotações (preço atual) e variações diárias são extraídas em tempo real via API do Yahoo Finance (yfinance). Os dados fundamentalistas (projeções de dividendos e DPA) são processados a partir da nossa base de dados analítica interna."
+    },
+    {
+        "q": "O que significa a 'Margem de Segurança'?",
+        "a": "É a diferença percentual entre o Preço Teto calculado e a Cotação de mercado atual. Uma margem positiva (ex: +15%) indica que o ativo está sendo negociado abaixo do seu preço justo teórico, oferecendo uma 'gordura' de segurança para o investidor."
+    },
+    {
+        "q": "Como são feitas as projeções de Dividendos para 2026?",
+        "a": "As projeções baseiam-se em uma análise conservadora que considera o histórico de *payout* da empresa, a expectativa de lucros futuros e relatórios de mercado. Trata-se de uma estimativa, não de uma garantia de pagamento."
+    },
+    {
+        "q": "Por que alguns ativos aparecem com traço (-) na cotação?",
+        "a": "Isso pode ocorrer momentaneamente caso a API de dados não consiga retornar o valor em tempo real ou se o mercado estiver fechado/em leilão. O sistema é programado para não exibir valores incorretos (como R$ 0,00) nessas situações."
+    }
+]
+
+for item in faq_data:
+    with st.expander(f"📌 {item['q']}"):
+        st.markdown(item['a'])
 
 # --- FOOTER ---
 st.markdown("""
