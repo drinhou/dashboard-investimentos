@@ -1,30 +1,31 @@
 import streamlit as st
 import pandas as pd
 import yfinance as yf
+import requests
+from bs4 import BeautifulSoup
 
-# --- CONFIGURAÇÃO VISUAL (PRETO NO BRANCO) ---
+# --- CONFIGURAÇÃO VISUAL ---
 st.set_page_config(
     page_title="Aura Finance",
     page_icon="🦅",
     layout="wide",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="expanded"
 )
 
-# CSS FORÇADO (HIGH CONTRAST)
+# CSS CLEAN (Alto Contraste)
 st.markdown("""
     <style>
         .stApp {background-color: #f8fafc;}
-        h1, h2, h3, h4, h5, h6, p, span, div, label {color: #0f172a !important; font-family: 'Segoe UI', sans-serif;}
+        h1, h2, h3, h4, h5, p, span, div, label {color: #0f172a !important; font-family: 'Segoe UI', sans-serif;}
         
-        /* Cards do Topo */
+        /* Cards */
         div[data-testid="stMetric"] {
             background-color: #ffffff !important;
             border: 1px solid #cbd5e1 !important;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
             border-radius: 8px;
         }
-        div[data-testid="stMetricLabel"] p {color: #64748b !important; font-size: 0.9rem !important;}
-        div[data-testid="stMetricValue"] div {color: #0f172a !important; font-weight: 700 !important;}
+        div[data-testid="stMetricLabel"] p {color: #64748b !important;}
         
         /* Tabelas */
         div[data-testid="stDataFrame"] {
@@ -38,17 +39,17 @@ st.markdown("""
 # --- FUNÇÕES ---
 
 def clean_currency(x):
-    """Limpa moeda para float"""
+    """Limpa R$, pontos e vírgulas para número decimal"""
     if isinstance(x, (int, float)): return float(x)
     if isinstance(x, str):
-        clean = x.split('\n')[0].replace('R$', '').replace('.', '').replace(',', '.').replace('%', '').strip()
+        clean = x.replace('R$', '').replace('.', '').replace(',', '.').replace('%', '').strip()
         try: return float(clean)
         except: return 0.0
     return 0.0
 
 @st.cache_data(ttl=300)
 def get_market_data():
-    """Busca índices"""
+    """Busca índices de mercado"""
     indices = {'IBOV': 0, 'S&P 500': 0, 'Dólar': 0, 'Bitcoin': 0}
     try:
         tickers = ['^BVSP', '^GSPC', 'BRL=X', 'BTC-USD']
@@ -61,91 +62,117 @@ def get_market_data():
         pass
     return indices
 
-# --- LISTA VIP DE NOMES (CORREÇÃO MANUAL) ---
-# Adicione aqui qualquer ativo que teime em ficar errado
+# --- ROBÔ INVESTIDOR 10 ---
+@st.cache_data(ttl=600) # Cache de 10 min para não bloquear o IP
+def scrape_investidor10(url):
+    """
+    Acessa o link público e tenta extrair a tabela de ativos.
+    """
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+    }
+    
+    try:
+        response = requests.get(url, headers=headers)
+        if response.status_code != 200:
+            return None, f"Erro ao acessar site (Status {response.status_code})"
+        
+        soup = BeautifulSoup(response.content, 'html.parser')
+        
+        # O Investidor10 geralmente tem tabelas com classe 'table' ou dentro de divs específicas
+        # Vamos tentar ler todas as tabelas da página
+        tables = pd.read_html(response.content)
+        
+        # Procura a tabela que tem colunas de ativos (Ativo, Quantidade, etc)
+        df_carteira = pd.DataFrame()
+        
+        for table in tables:
+            # Verifica se tem colunas típicas de carteira
+            cols = [c.upper() for c in table.columns]
+            if any("ATIVO" in c for c in cols) and any("QUANTIDADE" in c for c in cols):
+                df_carteira = table
+                break
+        
+        if df_carteira.empty:
+            return None, "Não encontrei a tabela de ativos no link. O layout do site pode ter mudado."
+            
+        # Padronizar colunas
+        df_carteira.columns = [c.upper().strip() for c in df_carteira.columns]
+        
+        # Renomear para nosso padrão
+        # O site geralmente retorna: Ativo, Cotação, Preço Médio, Rentabilidade, Quantidade, Saldo, %
+        rename_map = {}
+        for c in df_carteira.columns:
+            if "ATIVO" in c: rename_map[c] = "TICKER"
+            if "QUANTIDADE" in c: rename_map[c] = "QTD"
+            if "SALDO" in c: rename_map[c] = "SALDO"
+            if "MÉDIO" in c: rename_map[c] = "PM"
+        
+        df_carteira = df_carteira.rename(columns=rename_map)
+        
+        # Limpar dados
+        if 'TICKER' in df_carteira.columns:
+            # O site as vezes traz "WEGE3\nWEG", pegamos só a primeira parte
+            df_carteira['TICKER'] = df_carteira['TICKER'].astype(str).apply(lambda x: x.split(' ')[0].split('\n')[0].strip())
+            
+        return df_carteira, None
+        
+    except Exception as e:
+        return None, f"Erro no Robô: {e}"
+
+# --- LISTA VIP DE NOMES (CORREÇÃO) ---
 KNOWN_FIXES = {
     'KNCA11': 'Kinea Rendimentos',
     'MXRF11': 'Maxi Renda',
     'HGLG11': 'CSHG Logística',
     'XPLG11': 'XP Log',
     'VISC11': 'Vinci Shopping',
-    'KNIP11': 'Kinea Índices',
-    'KNCR11': 'Kinea Rendimentos',
     'BBAS3': 'Banco do Brasil',
     'BBSE3': 'BB Seguridade',
-    'ITUB4': 'Itaú Unibanco',
+    'TAEE11': 'Taesa',
     'VALE3': 'Vale',
     'PETR4': 'Petrobras',
     'WEGE3': 'WEG',
-    'TAEE11': 'Taesa'
+    'ITUB4': 'Itaú Unibanco',
+    'BTC': 'Bitcoin',
+    'ETH': 'Ethereum'
 }
 
 @st.cache_data(ttl=86400)
-def get_asset_name_online(ticker):
-    """
-    Tenta pegar o nome:
-    1. Da lista manual (KNOWN_FIXES)
-    2. Da API do Yahoo Finance
-    """
-    clean_ticker = str(ticker).replace('.SA', '').strip().upper()
-    
-    # 1. Verifica lista manual
-    if clean_ticker in KNOWN_FIXES:
-        return KNOWN_FIXES[clean_ticker]
-        
-    # 2. Tenta Online
+def get_name_online(ticker):
+    t_clean = str(ticker).replace('.SA', '').strip().upper()
+    if t_clean in KNOWN_FIXES: return KNOWN_FIXES[t_clean]
     try:
-        t_obj = yf.Ticker(f"{clean_ticker}.SA")
-        info = t_obj.info
-        # Tenta pegar nome curto ou longo
-        name = info.get('shortName') or info.get('longName')
-        if name:
-            # Limpa "S.A." e nomes muito longos
-            name = name.replace("Fundo De Investimento Imobiliario", "").replace("Fundo de Investimento Imobiliario", "")
-            name = name.replace(" - FII", "").replace(" S.A.", "").replace(" S/A", "").strip()
-            return name
+        t = yf.Ticker(f"{t_clean}.SA")
+        return t.info.get('shortName') or t.info.get('longName') or t_clean
     except:
-        pass
-    
-    return None
+        return t_clean
 
-def format_final_name(nome_planilha, ticker, classe):
-    """Lógica final de formatação"""
+def format_final_name(ticker, nome_valuation=None):
+    """Garante o nome bonito: Nome (TICKER)"""
     ticker_clean = str(ticker).replace('.SA', '').strip().upper()
-    classe_str = str(classe).lower()
     
-    # Renda Fixa: Não mexe, retorna nome da planilha
-    if any(x in classe_str for x in ["renda fixa", "tesouro", "fixa"]):
-        return str(nome_planilha)
+    # 1. Prioridade: Nome que veio do Excel Valuation
+    nome = nome_valuation
     
-    # Se for Cripto (Bitcoin, Ethereum)
-    if "cripto" in classe_str:
-        return f"{nome_planilha} ({ticker_clean})"
-
-    # Ações e FIIs:
-    # Se na planilha o nome for igual ao ticker ou vazio, busca o nome real
-    nome_candidato = str(nome_planilha).strip()
-    if not nome_candidato or nome_candidato == 'nan' or nome_candidato.upper() == ticker_clean:
-        online = get_asset_name_online(ticker_clean)
-        if online:
-            nome_candidato = online
-        else:
-            nome_candidato = ticker_clean # Falhou tudo, usa ticker
-
-    return f"{nome_candidato} ({ticker_clean})"
+    # 2. Se não tem no Excel, busca na lista VIP ou Online
+    if not nome or nome == 'nan':
+        nome = get_name_online(ticker_clean)
+        
+    # Limpeza estética
+    nome = str(nome).replace('Fundo De Investimento', '').replace('FII', '').replace('S.A.', '').strip()
+    
+    return f"{nome} ({ticker_clean})"
 
 # --- APP ---
 st.title("🦅 Aura Finance")
 
+# Índices
 idx = get_market_data()
 c1, c2, c3, c4 = st.columns(4)
-
 def show_metric(col, label, val, prefix="", suffix=""):
-    if val and val > 0:
-        val_fmt = f"{prefix} {val:,.2f} {suffix}".replace(",", "X").replace(".", ",").replace("X", ".")
-        col.metric(label, val_fmt)
-    else:
-        col.metric(label, "---")
+    if val: col.metric(label, f"{prefix} {val:,.2f} {suffix}".replace(",", "X").replace(".", ",").replace("X", "."))
+    else: col.metric(label, "---")
 
 show_metric(c1, "IBOVESPA", idx['IBOV'], "", "pts")
 show_metric(c2, "S&P 500", idx['S&P 500'], "", "pts")
@@ -154,148 +181,156 @@ show_metric(c4, "BITCOIN", idx['Bitcoin'], "US$")
 
 st.divider()
 
-# --- UPLOAD ---
+# --- SIDEBAR: ENTRADAS ---
 with st.sidebar:
-    st.header("📂 Upload")
-    uploaded_file = st.file_uploader("Arquivo Excel (.xlsx)", type=['xlsx'])
+    st.header("⚙️ Configuração")
+    
+    st.subheader("1. Conexão Automática")
+    url_investidor10 = st.text_input("Link Público Investidor10", value="https://investidor10.com.br/wallet/public/2194871")
+    
+    st.subheader("2. Inteligência (Excel)")
+    uploaded_file = st.file_uploader("Arquivo Valuation (.xlsx)", type=['xlsx'])
+    
+    if st.button("🔄 Atualizar Dados"):
+        st.cache_data.clear()
+        st.rerun()
 
-if not uploaded_file:
-    st.info("👆 Por favor, carregue sua planilha.")
+# --- LÓGICA PRINCIPAL ---
+
+if not url_investidor10:
+    st.info("👆 Cole o link da sua carteira pública no menu lateral.")
     st.stop()
 
-xls = pd.ExcelFile(uploaded_file)
+# 1. ROBÔ: Puxar Carteira
+with st.spinner("🤖 O robô está acessando o Investidor10..."):
+    df_carteira_web, erro_web = scrape_investidor10(url_investidor10)
 
-# --- 1. CARTEIRA E NOMES ---
-# Vamos processar a Carteira primeiro e resolver os nomes
-try:
-    df_cart = pd.read_excel(xls, 'Carteira').fillna(0)
-    c_ativo = [c for c in df_cart.columns if 'ATIVO' in c.upper()][0]
-    c_qtd = [c for c in df_cart.columns if 'QUANTIDADE' in c.upper()][0]
-    c_saldo = [c for c in df_cart.columns if 'SALDO' in c.upper() and 'TOTAL' not in c.upper()][0]
-    c_classe_l = [c for c in df_cart.columns if 'CLASSE' in c.upper()]
-    c_classe = c_classe_l[0] if c_classe_l else None
+if erro_web:
+    st.error(f"Falha na conexão: {erro_web}")
+    st.stop()
 
-    # Limpeza
-    df_cart['TICKER_CLEAN'] = df_cart[c_ativo].astype(str).apply(lambda x: x.split('\n')[0].strip())
-    df_cart['QTD_NUM'] = df_cart[c_qtd].apply(clean_currency)
-    df_cart['SALDO_NUM'] = df_cart[c_saldo].apply(clean_currency)
-    
-    # Processamento de Nomes
-    def resolve_row_name(row):
-        ticker = row['TICKER_CLEAN']
-        classe = str(row[c_classe]) if c_classe else "Ações"
-        # O nome na planilha Carteira geralmente é o próprio ticker ou vazio
-        return format_final_name(ticker, ticker, classe)
-
-    df_cart['NOME_EXIBICAO'] = df_cart.apply(resolve_row_name, axis=1)
-
-    df_carteira_show = df_cart[['NOME_EXIBICAO', 'QTD_NUM', 'SALDO_NUM']].copy()
-    df_carteira_show = df_carteira_show[df_carteira_show['SALDO_NUM'] > 0]
-    df_carteira_show = df_carteira_show.sort_values('SALDO_NUM', ascending=False)
-    
-    total_patrimonio = df_cart['SALDO_NUM'].sum()
-except Exception as e:
-    st.error(f"Erro na Carteira: {e}")
-    total_patrimonio = 0
-    df_carteira_show = pd.DataFrame()
-
-# --- 2. VALUATION (RADAR) ---
+# 2. EXCEL: Puxar Valuation (Se disponível)
 df_radar = pd.DataFrame()
+mapa_nomes_val = {}
+mapa_teto = {}
+
+if uploaded_file:
+    try:
+        df_val = pd.read_excel(uploaded_file, 'Valuation').fillna(0)
+        
+        # Mapear colunas
+        cols = df_val.columns
+        c_tick = [c for c in cols if 'TICKER' in c.upper()][0]
+        c_emp = [c for c in cols if 'EMPRESA' in c.upper()][0]
+        c_teto = [c for c in cols if 'BAZIN' in c.upper()][0]
+        
+        # Criar mapas de referência
+        for _, row in df_val.iterrows():
+            t = str(row[c_tick]).strip().upper()
+            mapa_nomes_val[t] = str(row[c_emp]).strip()
+            mapa_teto[t] = clean_currency(row[c_teto])
+            
+    except Exception as e:
+        st.warning(f"Erro ao ler Valuation: {e}. O Radar ficará incompleto.")
+
+# --- PROCESSAMENTO DOS DADOS WEB ---
 try:
-    df_val = pd.read_excel(xls, 'Valuation').fillna(0)
-    cols = df_val.columns
-    c_ticker = [c for c in cols if 'TICKER' in c.upper()][0]
-    c_empresa = [c for c in cols if 'EMPRESA' in c.upper()][0]
-    c_cotacao = [c for c in cols if 'COTAÇÃO' in c.upper()][0]
-    c_teto = [c for c in cols if 'BAZIN' in c.upper()][0]
-
-    df_val['TICKER_CLEAN'] = df_val[c_ticker].astype(str).str.strip()
-    df_val['PRECO_NUM'] = df_val[c_cotacao].apply(clean_currency)
-    df_val['TETO_NUM'] = df_val[c_teto].apply(clean_currency)
+    # Limpeza dos dados vindos do site
+    df_carteira_web['QTD_NUM'] = df_carteira_web['QTD'].apply(clean_currency)
+    df_carteira_web['SALDO_NUM'] = df_carteira_web['SALDO'].apply(clean_currency)
     
-    # Margem: ((Teto - Preço) / Preço) * 100
-    df_val['MARGEM_PCT'] = df_val.apply(
-        lambda x: ((x['TETO_NUM'] - x['PRECO_NUM']) / x['PRECO_NUM']) * 100 if x['PRECO_NUM'] > 0 else 0, axis=1
-    )
+    # Preço Atual (Derivado do Saldo / Qtd para ser mais preciso, ou usar coluna do site se tiver)
+    # Vamos tentar usar a coluna 'COTAÇÃO' do site se existir, senão calcula
+    cols_web = [c.upper() for c in df_carteira_web.columns]
+    if 'COTAÇÃO' in cols_web:
+         df_carteira_web['PRECO_ATUAL'] = df_carteira_web['COTAÇÃO'].apply(clean_currency)
+    else:
+         df_carteira_web['PRECO_ATUAL'] = df_carteira_web['SALDO_NUM'] / df_carteira_web['QTD_NUM']
+
+    # CRIAÇÃO DO DATAFRAME FINAL
+    lista_final = []
     
-    # Usa a mesma lógica de nomes para consistência
-    df_val['NOME_FINAL'] = df_val.apply(
-        lambda x: format_final_name(x[c_empresa], x['TICKER_CLEAN'], 'Ações'), axis=1
-    )
+    for _, row in df_carteira_web.iterrows():
+        ticker = str(row['TICKER']).strip().upper()
+        qtd = row['QTD_NUM']
+        saldo = row['SALDO_NUM']
+        preco = row['PRECO_ATUAL']
+        
+        # Pega dados do Excel (se houver)
+        nome_val = mapa_nomes_val.get(ticker, None)
+        teto_bazin = mapa_teto.get(ticker, 0.0)
+        
+        # Formata Nome
+        nome_final = format_final_name(ticker, nome_val)
+        
+        # Calcula Margem
+        margem = ((teto_bazin - preco) / preco) * 100 if preco > 0 and teto_bazin > 0 else -100 # -100 se não tiver teto
+        
+        lista_final.append({
+            'ATIVO_NOME': nome_final,
+            'TICKER': ticker,
+            'QTD': qtd,
+            'SALDO': saldo,
+            'PRECO': preco,
+            'TETO': teto_bazin,
+            'MARGEM': margem
+        })
+        
+    df_master = pd.DataFrame(lista_final)
+    
+    # Separação
+    df_carteira_view = df_master[['ATIVO_NOME', 'QTD', 'SALDO']].sort_values('SALDO', ascending=False)
+    patrimonio = df_master['SALDO'].sum()
+    
+    # Radar: Só mostra o que tem Preço Teto definido no Excel (> 0)
+    df_radar_view = df_master[df_master['TETO'] > 0][['ATIVO_NOME', 'PRECO', 'TETO', 'MARGEM']].copy()
+    df_radar_view = df_radar_view.sort_values('MARGEM', ascending=False)
 
-    df_radar = df_val[['NOME_FINAL', 'PRECO_NUM', 'TETO_NUM', 'MARGEM_PCT']].copy()
-    df_radar = df_radar.sort_values('MARGEM_PCT', ascending=False)
-except:
-    pass
-
-# --- 3. PROVENTOS ---
-dados_anos = {'2024': [0.0]*12, '2025': [0.0]*12, '2026': [0.0]*12}
-try:
-    df_prov = pd.read_excel(xls, 'Proventos').fillna(0)
-    col_a = df_prov.iloc[:, 0].astype(str)
-    for ano in ['2024', '2025', '2026']:
-        linha = df_prov[col_a.str.contains(f"Proventos {ano}", na=False)]
-        if not linha.empty:
-            dados_anos[ano] = linha.iloc[0, 1:13].apply(clean_currency).values
-except:
-    pass
+except Exception as e:
+    st.error(f"Erro ao processar dados do site: {e}")
+    st.stop()
 
 # --- DASHBOARD ---
 
 # 1. CARTEIRA
-st.subheader("🏦 Minha Carteira")
+st.subheader("🏦 Minha Carteira (Investidor10)")
 col_p1, col_p2 = st.columns([1, 3])
-col_p1.metric("Patrimônio Total", f"R$ {total_patrimonio:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
+col_p1.metric("Patrimônio Total", f"R$ {patrimonio:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
 
-if not df_carteira_show.empty:
-    with col_p2:
-        st.dataframe(
-            df_carteira_show,
-            column_config={
-                "NOME_EXIBICAO": st.column_config.TextColumn("Ativo"),
-                "QTD_NUM": st.column_config.NumberColumn("Quantidade", format="%.0f"),
-                "SALDO_NUM": st.column_config.NumberColumn("Saldo Atual", format="R$ %.2f"),
-            },
-            hide_index=True,
-            use_container_width=True
-        )
-
-st.divider()
-
-# 2. PROVENTOS
-st.subheader("💰 Histórico de Proventos")
-tab24, tab25, tab26 = st.tabs(["2024", "2025", "2026"])
-
-def render_prov(ano):
-    vals = dados_anos.get(ano, [0.0]*12)
-    df_t = pd.DataFrame([vals], columns=['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'])
-    total = sum(vals)
+with col_p2:
     st.dataframe(
-        df_t,
-        column_config={c: st.column_config.NumberColumn(format="R$ %.2f") for c in df_t.columns},
+        df_carteira_view,
+        column_config={
+            "ATIVO_NOME": st.column_config.TextColumn("Ativo"),
+            "QTD": st.column_config.NumberColumn("Quantidade", format="%.0f"),
+            "SALDO": st.column_config.NumberColumn("Saldo Atual", format="R$ %.2f"),
+        },
         hide_index=True,
         use_container_width=True
     )
-    st.caption(f"Total {ano}: **R$ {total:,.2f}**".replace(",", "X").replace(".", ",").replace("X", "."))
-
-with tab24: render_prov('2024')
-with tab25: render_prov('2025')
-with tab26: render_prov('2026')
 
 st.divider()
 
-# 3. RADAR
+# 2. RADAR (CRUZAMENTO WEB + EXCEL)
 st.subheader("🎯 Radar de Oportunidades")
-if not df_radar.empty:
+
+if uploaded_file is None:
+    st.warning("⚠️ Para ver o Radar Bazin, faça o upload da planilha 'Valuation' na barra lateral.")
+elif df_radar_view.empty:
+    st.info("Nenhum ativo da sua carteira online foi encontrado na planilha de Valuation com preço teto definido.")
+else:
     st.dataframe(
-        df_radar,
+        df_radar_view,
         column_config={
-            "NOME_FINAL": st.column_config.TextColumn("Ativo"),
-            "PRECO_NUM": st.column_config.NumberColumn("Cotação", format="R$ %.2f"),
-            "TETO_NUM": st.column_config.NumberColumn("Preço Teto", format="R$ %.2f"),
-            "MARGEM_PCT": st.column_config.NumberColumn("Margem (%)", format="%.2f %%"),
+            "ATIVO_NOME": st.column_config.TextColumn("Ativo"),
+            "PRECO": st.column_config.NumberColumn("Cotação (Web)", format="R$ %.2f"),
+            "TETO": st.column_config.NumberColumn("Preço Teto (Excel)", format="R$ %.2f"),
+            "MARGEM": st.column_config.NumberColumn("Margem (%)", format="%.2f %%"),
         },
         hide_index=True,
         use_container_width=True,
         height=500
     )
+
+st.divider()
+st.caption("Dados obtidos via Investidor10. Preços Teto via Excel do Usuário.")
