@@ -3,118 +3,164 @@ import pandas as pd
 import yfinance as yf
 import os
 import datetime
+import pytz
 
 # --- 1. CONFIGURAÇÃO (WIDE & DARK) ---
 st.set_page_config(
     page_title="Dinheiro Data",
-    page_icon="🦅",
+    page_icon="💸",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# --- 2. CSS PREMIUM (UX CENTRALIZADO E NAVEGAÇÃO) ---
+# --- 2. CSS PREMIUM (TEMA VERDE & SMOOTH SCROLL) ---
 st.markdown("""
     <style>
+        /* SCROLL SUAVE OBRIGATÓRIO NO HTML */
+        html {
+            scroll-behavior: smooth !important;
+        }
+
         /* Fundo e Fonte */
-        .stApp { background-color: #0e1117; color: #e0e0e0; scroll-behavior: smooth; }
+        .stApp { background-color: #0c120f; color: #e0e0e0; } /* Fundo levemente esverdeado escuro */
         * { font-family: 'Segoe UI', 'Roboto', sans-serif; }
         
-        /* HEADER DE NAVEGAÇÃO (BOTÕES) */
+        /* HEADER CENTRALIZADO */
+        .main-header {
+            text-align: center;
+            padding: 40px 0 20px 0;
+            border-bottom: 1px solid #1f2937;
+            margin-bottom: 30px;
+            background: radial-gradient(circle at center, #132e25 0%, #0c120f 100%);
+        }
+        .main-title {
+            font-size: 3.5rem;
+            font-weight: 800;
+            background: -webkit-linear-gradient(45deg, #10b981, #34d399); /* Degradê Verde */
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin: 0;
+            letter-spacing: -1px;
+        }
+        .main-greeting {
+            font-size: 1.1rem;
+            color: #9ca3af;
+            font-weight: 400;
+            margin-top: 5px;
+        }
+
+        /* BOTÕES DE NAVEGAÇÃO */
         .nav-card {
-            background-color: #1f2937;
-            border: 1px solid #374151;
-            border-radius: 10px;
-            padding: 15px;
+            background-color: #111a16;
+            border: 1px solid #1f2937;
+            border-radius: 12px;
+            padding: 18px;
             text-align: center;
             cursor: pointer;
-            transition: all 0.2s ease;
             text-decoration: none;
             color: white;
             display: block;
             margin-bottom: 20px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
         }
         .nav-card:hover {
-            background-color: #374151;
-            border-color: #60a5fa;
-            transform: translateY(-2px);
+            border-color: #10b981; /* Verde ao passar o mouse */
+            transform: translateY(-3px);
+            box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.1);
         }
-        .nav-title { font-weight: bold; font-size: 1.1rem; display: block; }
-        .nav-desc { font-size: 0.8rem; color: #9ca3af; display: block; margin-top: 5px;}
+        .nav-icon { font-size: 1.5rem; margin-bottom: 8px; display: block; }
+        .nav-title { font-weight: 700; font-size: 1rem; display: block; color: #e5e7eb; }
+        .nav-desc { font-size: 0.75rem; color: #6b7280; display: block; margin-top: 4px; }
 
-        /* TABELAS - CENTRALIZAÇÃO TOTAL */
+        /* TABELAS - DESIGN CLEAN */
+        div[data-testid="stDataFrame"] {
+            border: 1px solid #1f2937;
+            border-radius: 12px;
+            overflow: hidden;
+        }
         div[data-testid="stDataFrame"] div[role="columnheader"] {
-            background-color: #111827;
-            color: #9ca3af;
-            font-size: 13px;
+            background-color: #141f1b; /* Verde muito escuro */
+            color: #6ee7b7; /* Verde claro texto */
+            font-size: 12px;
             font-weight: 700;
             text-transform: uppercase;
-            border-bottom: 2px solid #374151;
+            border-bottom: 2px solid #064e3b;
             text-align: center !important;
             justify-content: center !important;
-            display: flex;
         }
-
-        /* CÉLULAS - CENTRALIZAÇÃO TOTAL */
         div[data-testid="stDataFrame"] div[role="gridcell"] {
             display: flex;
             justify-content: center !important;
             align-items: center !important;
             text-align: center !important;
-            font-size: 14px;
-            font-weight: 500;
-            height: 100%;
+            font-size: 13px;
+            background-color: #0c120f;
         }
         
-        /* LOGOS CIRCULARES NO MEIO */
+        /* LOGOS */
         div[data-testid="stDataFrame"] div[role="gridcell"] img {
             border-radius: 50%;
-            object-fit: cover;
-            border: 1px solid #4b5563;
-            padding: 2px;
-            background-color: white;
-            width: 32px;
-            height: 32px;
-            display: block;
-            margin: 0 auto; /* Garante centro */
+            border: 2px solid #1f2937;
+            padding: 1px;
+            background-color: #fff;
+            width: 28px;
+            height: 28px;
         }
 
-        /* TÍTULOS DE SEÇÃO COM ÂNCORA */
+        /* TÍTULOS DE SEÇÃO */
         .section-header {
-            font-size: 1.5rem;
+            font-size: 1.4rem;
             font-weight: 700;
             color: #f3f4f6;
-            margin-top: 40px;
+            margin-top: 50px;
             margin-bottom: 20px;
-            border-left: 5px solid #3b82f6;
-            padding-left: 15px;
-            background: linear-gradient(90deg, #1f2937 0%, transparent 100%);
-            padding-top: 8px;
-            padding-bottom: 8px;
-            border-radius: 0 8px 8px 0;
+            border-left: 5px solid #10b981; /* Barra Verde */
+            padding-left: 20px;
             display: flex;
             align-items: center;
             justify-content: space-between;
         }
         
-        .kpi-badge {
+        /* BADGES (Etiquetas) */
+        .status-badge {
             background-color: #064e3b;
-            color: #4ade80;
-            font-size: 0.9rem;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-weight: 600;
+            color: #34d399;
+            font-size: 0.75rem;
+            padding: 4px 10px;
+            border-radius: 99px;
             border: 1px solid #059669;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+        
+        /* TIMESTAMP (Rodapé pequeno) */
+        .timestamp {
+            font-size: 0.7rem;
+            color: #4b5563;
+            text-align: right;
+            margin-top: -10px;
+            margin-bottom: 20px;
+            font-style: italic;
         }
     </style>
 """, unsafe_allow_html=True)
 
-# --- 3. FUNÇÕES AUXILIARES ---
+# --- 3. FUNÇÕES ---
 
-def get_greeting():
-    h = datetime.datetime.now().hour
-    if 5 <= h < 12: return "Bom dia"
-    elif 12 <= h < 18: return "Boa tarde"
-    return "Boa noite"
+def get_time_greeting():
+    # Pega hora de Brasilia
+    tz = pytz.timezone('America/Sao_Paulo')
+    now = datetime.datetime.now(tz)
+    h = now.hour
+    
+    greeting = "Boa noite"
+    if 5 <= h < 12: greeting = "Bom dia"
+    elif 12 <= h < 18: greeting = "Boa tarde"
+    
+    time_str = now.strftime("%H:%M")
+    return greeting, time_str
 
 def clean_currency(x):
     if isinstance(x, (int, float)): return float(x)
@@ -133,8 +179,8 @@ def get_logo_url(ticker):
     if not isinstance(ticker, str): return ""
     clean = ticker.replace('.SA', '').strip().upper()
     
-    # LISTA MANUAL DE SITES
-    meus_sites = {
+    # SITES (MANUAL)
+    sites = {
         'CXSE3': 'caixaseguradora.com.br', 'BBSE3': 'bbseguros.com.br', 'ODPV3': 'odontoprev.com.br',
         'BBAS3': 'bb.com.br', 'ABCB4': 'abcbrasil.com.br', 'ITUB4': 'itau.com.br',
         'ISAE4': 'isaenergiabrasil.com.br', 'TRPL4': 'isaenergiabrasil.com.br',
@@ -145,13 +191,10 @@ def get_logo_url(ticker):
         'ABEV3': 'ambev.com.br', 'B3SA3': 'b3.com.br', 'EGIE3': 'engie.com.br'
     }
 
-    if clean in meus_sites:
-        return f"https://www.google.com/s2/favicons?domain={meus_sites[clean]}&sz=128"
-    
-    if clean in ['BTC', 'BITCOIN']: return "https://assets.coingecko.com/coins/images/1/small/bitcoin.png"
-    if clean in ['ETH', 'ETHEREUM']: return "https://assets.coingecko.com/coins/images/279/small/ethereum.png"
-    if clean in ['SOL', 'SOLANA']: return "https://assets.coingecko.com/coins/images/4128/small/solana.png"
-
+    if clean in sites: return f"https://www.google.com/s2/favicons?domain={sites[clean]}&sz=128"
+    if clean in ['BTC','BITCOIN']: return "https://assets.coingecko.com/coins/images/1/small/bitcoin.png"
+    if clean in ['ETH','ETHEREUM']: return "https://assets.coingecko.com/coins/images/279/small/ethereum.png"
+    if clean in ['SOL','SOLANA']: return "https://assets.coingecko.com/coins/images/4128/small/solana.png"
     return f"https://cdn.jsdelivr.net/gh/thefintz/icon-project@master/stock_logos/{clean}.png"
 
 @st.cache_data(ttl=60)
@@ -159,7 +202,7 @@ def get_market_data_distributed():
     groups = {
         'USA': { 'S&P 500': '^GSPC', 'NASDAQ': '^IXIC', 'DOW JONES': '^DJI', 'VIX (Medo)': '^VIX' },
         'BRASIL': { 'IBOVESPA': '^BVSP', 'IFIX (FIIs)': 'IFIX.SA', 'VALE': 'VALE3.SA', 'PETROBRAS': 'PETR4.SA' },
-        'MOEDAS': { 'DÓLAR': 'BRL=X', 'EURO': 'EURBRL=X', 'DXY Global': 'DX-Y.NYB', 'LIBRA': 'GBPBRL=X' },
+        'MOEDAS': { 'DÓLAR': 'BRL=X', 'EURO': 'EURBRL=X', 'LIBRA': 'GBPBRL=X', 'DXY Global': 'DX-Y.NYB' }, # Libra subiu
         'COMMODITIES': { 'OURO': 'GC=F', 'PRATA': 'SI=F', 'COBRE': 'HG=F', 'PETRÓLEO': 'BZ=F' },
         'CRIPTO': { 'BITCOIN': 'BTC-USD', 'ETHEREUM': 'ETH-USD', 'SOLANA': 'SOL-USD', 'BNB': 'BNB-USD' }
     }
@@ -171,16 +214,20 @@ def get_market_data_distributed():
             data = yf.download(tickers, period="5d", progress=False)['Close']
             for name, ticker in items.items():
                 try:
-                    series = data[ticker].dropna() if len(tickers) > 1 and ticker in data.columns else data.dropna()
+                    # Lógica robusta para evitar erro se ticker não existir
+                    series = pd.Series()
+                    if len(tickers) > 1 and ticker in data.columns:
+                        series = data[ticker].dropna()
+                    elif isinstance(data, pd.Series): # Se baixou só 1
+                        series = data.dropna()
+                        
                     if len(series) >= 2:
                         curr, prev = series.iloc[-1], series.iloc[-2]
-                        delta = curr - prev
-                        pct = (delta / prev) * 100
+                        pct = ((curr - prev) / prev) * 100
                         rows.append([name, curr, pct])
                     else: rows.append([name, 0.0, 0.0])
                 except: rows.append([name, 0.0, 0.0])
         except: pass
-        # Garante 4 linhas fixas para simetria perfeita
         while len(rows) < 4: rows.append(["-", 0.0, 0.0])
         final_dfs[cat] = pd.DataFrame(rows[:4], columns=["Ativo", "Preço", "Var%"])
     return final_dfs
@@ -198,44 +245,59 @@ def get_br_prices(ticker_list):
         return prices
     except: return {}
 
-# --- 4. APP LAYOUT ---
+# --- 4. LAYOUT PRINCIPAL ---
 
-# Topo: Saudação
-st.markdown(f"<h2 style='text-align: center; color: white; margin-bottom: 30px;'>🦅 {get_greeting()}, Investidor</h2>", unsafe_allow_html=True)
+greeting_text, time_text = get_time_greeting()
 
-# NAVEGAÇÃO (BOTÕES CLICÁVEIS)
-# Usamos HTML anchors para navegar na mesma página
+# Header Centralizado
+st.markdown(f"""
+    <div class='main-header'>
+        <h1 class='main-title'>💸 Dinheiro Data</h1>
+        <p class='main-greeting'>🦅 {greeting_text}, Investidor. <span style='font-size: 0.8em; opacity: 0.7;'>| Dados: {time_text}</span></p>
+    </div>
+""", unsafe_allow_html=True)
+
+# NAVEGAÇÃO
 nav1, nav2, nav3 = st.columns(3)
 with nav1:
     st.markdown("""<a href='#panorama' class='nav-card'>
-        <span class='nav-title'>🌍 Panorama</span>
-        <span class='nav-desc'>Mercado Global em Tempo Real</span>
+        <span class='nav-icon'>🌍</span>
+        <span class='nav-title'>Panorama Global</span>
+        <span class='nav-desc'>Visão Macro em Tempo Real</span>
     </a>""", unsafe_allow_html=True)
 with nav2:
     st.markdown("""<a href='#radar-bazin' class='nav-card'>
-        <span class='nav-title'>🎯 Radar Bazin</span>
-        <span class='nav-desc'>Preço Teto e Margem</span>
+        <span class='nav-icon'>🎯</span>
+        <span class='nav-title'>Radar Bazin</span>
+        <span class='nav-desc'>Análise de Preço Teto</span>
     </a>""", unsafe_allow_html=True)
 with nav3:
     st.markdown("""<a href='#dividendos' class='nav-card'>
-        <span class='nav-title'>💰 Dividendos</span>
-        <span class='nav-desc'>Yield Projetado 2026</span>
+        <span class='nav-icon'>💰</span>
+        <span class='nav-title'>Dividendos</span>
+        <span class='nav-desc'>Projeção de Renda Futura</span>
     </a>""", unsafe_allow_html=True)
 
 M = get_market_data_distributed()
 
-# --- ANCHOR: PANORAMA ---
+# --- 1. PANORAMA ---
 st.markdown("<div id='panorama'></div>", unsafe_allow_html=True)
-st.markdown("<div class='section-header'>🌍 Panorama de Mercado</div>", unsafe_allow_html=True)
+st.markdown("""
+<div class='section-header'>
+    <span>🌍 Panorama de Mercado</span>
+    <span class='status-badge'>🟢 ONLINE</span>
+</div>
+""", unsafe_allow_html=True)
 
 def show_mini_table(col, title, df):
     col.write(f"**{title}**")
     if not df.empty:
-        # APENAS VERDE OU VERMELHO
+        # UX: Cores de Variação (Verde/Vermelho/Cinza)
         def color_var(val):
-            color = '#4ade80' if val > 0 else '#f87171' if val < 0 else '#6b7280'
-            return f'color: {color}; font-weight: bold;'
-
+            if val > 0: return 'color: #34d399; font-weight: bold;' # Verde Esmeralda
+            if val < 0: return 'color: #f87171; font-weight: bold;' # Vermelho
+            return 'color: #6b7280;' # Cinza
+            
         styled_df = df.style.format({ "Preço": "{:.2f}", "Var%": "{:+.2f}%" }).map(color_var, subset=['Var%'])
         
         col.dataframe(
@@ -249,22 +311,22 @@ def show_mini_table(col, title, df):
             use_container_width=True
         )
 
-# Layout Panorama (Simétrico)
-row1_1, row1_2, row1_3 = st.columns(3)
-with row1_1: show_mini_table(row1_1, "🇺🇸 Índices EUA", M['USA'])
-with row1_2: show_mini_table(row1_2, "🇧🇷 Brasil", M['BRASIL'])
-with row1_3: show_mini_table(row1_3, "💱 Moedas", M['MOEDAS'])
+# Layout Panorama Simétrico
+r1c1, r1c2, r1c3 = st.columns(3)
+with r1c1: show_mini_table(r1c1, "🇺🇸 Índices EUA", M['USA'])
+with r1c2: show_mini_table(r1c2, "🇧🇷 Índices Brasil", M['BRASIL'])
+with r1c3: show_mini_table(r1c3, "💱 Moedas", M['MOEDAS'])
 
 st.write("") 
 
-row2_1, row2_2 = st.columns([1,1]) # Centralizado em 2 colunas
-with row2_1: show_mini_table(row2_1, "🛢️ Commodities", M['COMMODITIES'])
-with row2_2: show_mini_table(row2_2, "💎 Criptoativos", M['CRIPTO'])
+r2c1, r2c2 = st.columns(2)
+with r2c1: show_mini_table(r2c1, "🛢️ Commodities", M['COMMODITIES'])
+with r2c2: show_mini_table(r2c2, "💎 Criptoativos", M['CRIPTO'])
 
 
-# --- LÓGICA DE DADOS ---
+# --- CARGA DADOS ---
 df_radar, df_div = pd.DataFrame(), pd.DataFrame()
-uploaded = st.sidebar.file_uploader("📂 Carregar Dados", type=['xlsx', 'csv'])
+uploaded = st.sidebar.file_uploader("📂 Importar Dados", type=['xlsx', 'csv'])
 file_data = None
 
 if uploaded: file_data = pd.read_csv(uploaded) if uploaded.name.endswith('.csv') else pd.ExcelFile(uploaded)
@@ -299,6 +361,7 @@ if file_data is not None:
                 
                 prices = get_br_prices(target_df['TICKER_F'].unique().tolist())
                 target_df['PRECO_F'] = target_df['TICKER_F'].map(prices).fillna(0)
+                
                 target_df['MARGEM_VAL'] = target_df.apply(lambda x: ((x['BAZIN_F'] - x['PRECO_F']) / x['PRECO_F'] * 100) if x['PRECO_F'] > 0 else -999, axis=1)
                 target_df['Logo'] = target_df['TICKER_F'].apply(get_logo_url)
                 target_df['Ativo'] = target_df[c_emp] if c_emp else target_df['TICKER_F']
@@ -307,25 +370,23 @@ if file_data is not None:
                 df_div = target_df[target_df['DY_F'] > 0][['Logo', 'Ativo', 'DPA_F', 'DY_F']].sort_values('DY_F', ascending=False)
     except: pass
 
-# --- ANCHOR: RADAR BAZIN ---
+# --- 2. RADAR BAZIN ---
 st.markdown("<div id='radar-bazin'></div>", unsafe_allow_html=True)
-
-# KPI Count
 count_opp = len(df_radar[df_radar['MARGEM_VAL'] > 10]) if not df_radar.empty else 0
-html_header_bazin = f"""
+
+st.markdown(f"""
 <div class='section-header'>
-    <span>🎯 Radar Preço Teto</span>
-    <span class='kpi-badge'>{count_opp} Oportunidades (>10%)</span>
+    <span>🎯 Radar de Preço Justo</span>
+    <span class='status-badge'>{count_opp} Oportunidades com Margem > 10%</span>
 </div>
-"""
-st.markdown(html_header_bazin, unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
 if not df_radar.empty:
-    # CORES RÍGIDAS: Verde (>10), Vermelho (<0), Cinza (Resto)
+    # UX: Escala de Cores Rígida
     def style_margin(v):
-        if v > 10: return 'color: #4ade80; font-weight: bold;' # Verde Forte
-        if v < 0: return 'color: #f87171; font-weight: bold;' # Vermelho
-        return 'color: #9ca3af;' # Cinza Neutro
+        if v > 10: return 'color: #34d399; font-weight: bold;' # Verde (>10)
+        if v < 0: return 'color: #f87171; font-weight: bold;'  # Vermelho (<0)
+        return 'color: #9ca3af;'                               # Neutro (0-10)
 
     styled_radar = df_radar.style.format({
         "BAZIN_F": "R$ {:.2f}", "PRECO_F": "R$ {:.2f}", "MARGEM_VAL": "{:+.1f}%"
@@ -343,25 +404,23 @@ if not df_radar.empty:
         hide_index=True,
         use_container_width=True
     )
+    st.markdown(f"<div class='timestamp'>Última verificação: {time_text}</div>", unsafe_allow_html=True)
 
-# --- ANCHOR: DIVIDENDOS ---
+# --- 3. DIVIDENDOS ---
 st.markdown("<div id='dividendos'></div>", unsafe_allow_html=True)
-
-# KPI Count
 count_dy = len(df_div[df_div['DY_F'] > 8]) if not df_div.empty else 0
-html_header_div = f"""
+
+st.markdown(f"""
 <div class='section-header'>
-    <span>💰 Projeção Dividendos</span>
-    <span class='kpi-badge'>{count_dy} Ativos Pagadores (>8%)</span>
+    <span>💰 Dividendos Projetados</span>
+    <span class='status-badge'>{count_dy} Ativos com DY > 8%</span>
 </div>
-"""
-st.markdown(html_header_div, unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
 if not df_div.empty:
-    # CORES RÍGIDAS: Verde (>8), Cinza (Resto)
     def style_dy(v):
-        if v > 8: return 'color: #4ade80; font-weight: bold;'
-        return 'color: #9ca3af;'
+        if v > 8: return 'color: #34d399; font-weight: bold;' # Verde (>8)
+        return 'color: #9ca3af;' # Neutro
 
     styled_div = df_div.style.format({
         "DPA_F": "R$ {:.2f}", "DY_F": "{:.2f}%"
@@ -373,7 +432,7 @@ if not df_div.empty:
             "Logo": st.column_config.ImageColumn("", width="small"),
             "Ativo": st.column_config.TextColumn("Ativo"),
             "DPA_F": st.column_config.NumberColumn("Div. / Ação"),
-            "DY_F": st.column_config.TextColumn("Yield 2026"),
+            "DY_F": st.column_config.TextColumn("Yield Projetado"),
         },
         hide_index=True,
         use_container_width=True
