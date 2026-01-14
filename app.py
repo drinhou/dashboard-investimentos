@@ -3,37 +3,38 @@ import pandas as pd
 import yfinance as yf
 import re
 
-# --- CONFIGURAÇÃO DA PÁGINA ---
+# --- CONFIGURAÇÃO VISUAL (CLEAN & ROBUST) ---
 st.set_page_config(
     page_title="Aura Finance",
-    page_icon="✨",
+    page_icon="🦅",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# --- CSS REFINADO ---
+# CSS para forçar visual "Investidor10" sem quebrar
 st.markdown("""
     <style>
-        .main {background-color: #f8fafc;}
-        h1, h2, h3 {font-family: 'Helvetica Neue', sans-serif; color: #0f172a; font-weight: 600;}
+        /* Fundo limpo */
+        .main {background-color: #f4f7f6;}
         
-        /* Cards de Métricas */
+        /* Fontes */
+        h1, h2, h3, p {font-family: 'Segoe UI', Helvetica, sans-serif; color: #333;}
+        
+        /* Cards de Índices (Topo) */
         div[data-testid="stMetric"] {
             background-color: #ffffff;
-            border: 1px solid #e2e8f0;
-            border-radius: 12px;
-            padding: 15px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            border-left: 5px solid #00C896; /* Verde Nubank */
+            padding: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            border-radius: 5px;
         }
-        /* Texto dos cards */
-        div[data-testid="stMetricLabel"] p {color: #64748b !important; font-size: 0.85rem !important;}
-        div[data-testid="stMetricValue"] div {color: #0f172a !important;}
-
-        /* Tabelas Clean */
+        
+        /* Tabelas */
         div[data-testid="stDataFrame"] {
-            background-color: white;
-            border-radius: 10px;
-            border: 1px solid #e2e8f0;
+            background-color: #ffffff;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -41,223 +42,171 @@ st.markdown("""
 # --- FUNÇÕES ---
 
 def clean_currency(x):
-    """Limpa formatação de moeda R$"""
+    """Limpa textos de dinheiro e converte para número."""
     if isinstance(x, (int, float)): return float(x)
     if isinstance(x, str):
+        # Remove R$, espaços, pontos de milhar e converte vírgula
         clean = x.split('\n')[0].replace('R$', '').replace('.', '').replace(',', '.').replace('%', '').strip()
         try: return float(clean)
         except: return 0.0
     return 0.0
 
-@st.cache_data(ttl=600)
-def get_market_indices():
-    """Busca índices de mercado (com tratamento de erro individual)"""
-    indices = {'IBOV': 0, 'S&P 500': 0, 'Dólar': 0, 'Bitcoin': 0}
+@st.cache_data(ttl=300)
+def get_market_data():
+    """Busca índices sem quebrar o site se falhar."""
+    indices = {'IBOV': None, 'S&P 500': None, 'Dólar': None, 'Bitcoin': None}
     try:
-        # Tenta pegar tudo de uma vez
+        # Tenta buscar cotações
         tickers = ['^BVSP', '^GSPC', 'BRL=X', 'BTC-USD']
         data = yf.download(tickers, period="1d", progress=False)['Close'].iloc[-1]
+        
         indices['IBOV'] = data.get('^BVSP', 0)
         indices['S&P 500'] = data.get('^GSPC', 0)
         indices['Dólar'] = data.get('BRL=X', 0)
         indices['Bitcoin'] = data.get('BTC-USD', 0)
     except:
-        pass
+        pass # Se der erro, mantemos None para tratar na exibição
     return indices
 
-def get_logo_url(ticker):
-    """Tenta buscar a logo real da empresa baseada no Ticker"""
+def make_avatar_url(ticker):
+    """Gera um avatar colorido e elegante com as iniciais (Nunca quebra)."""
     if not isinstance(ticker, str): return ""
-    clean_ticker = ticker.upper().replace('.SA', '').strip()
-    # Repositório público de logos (Brasileiro e US)
-    return f"https://raw.githubusercontent.com/thefintz/icon-project/master/stock_logos/{clean_ticker}.png"
+    clean = ticker.replace('.SA', '').strip()[:4] # Pega 4 letras
+    # API ui-avatars gera imagem com iniciais
+    return f"https://ui-avatars.com/api/?name={clean}&background=0D1117&color=fff&size=64&font-size=0.4&length=4&rounded=true&bold=true"
 
-# --- HEADER ---
-st.title("✨ Aura Finance")
+# --- HEADER (ÍNDICES) ---
+st.title("🦅 Aura Finance")
 
-# Índices
-idx = get_market_indices()
+idx = get_market_data()
 c1, c2, c3, c4 = st.columns(4)
-c1.metric("🇧🇷 IBOVESPA", f"{idx['IBOV']:,.0f} pts")
-c2.metric("🇺🇸 S&P 500", f"{idx['S&P 500']:,.0f} pts")
-c3.metric("💵 DÓLAR", f"R$ {idx['Dólar']:.2f}")
-c4.metric("₿ BITCOIN", f"US$ {idx['Bitcoin']:,.0f}")
+
+def show_metric(col, label, val, prefix="", suffix=""):
+    if val and val > 0:
+        col.metric(label, f"{prefix} {val:,.2f} {suffix}".replace(",", "X").replace(".", ",").replace("X", "."))
+    else:
+        col.metric(label, "---")
+
+show_metric(c1, "IBOVESPA", idx['IBOV'], "", "pts")
+show_metric(c2, "S&P 500", idx['S&P 500'], "", "pts")
+show_metric(c3, "DÓLAR", idx['Dólar'], "R$")
+show_metric(c4, "BITCOIN", idx['Bitcoin'], "US$")
 
 st.divider()
 
-# --- UPLOAD ---
+# --- SIDEBAR ---
 with st.sidebar:
-    st.header("Dados")
-    uploaded_file = st.file_uploader("Arquivo Excel (.xlsx)", type=['xlsx'])
+    st.header("📂 Dados")
+    uploaded_file = st.file_uploader("Arraste sua planilha aqui", type=['xlsx'])
 
 if not uploaded_file:
-    st.info("👆 Por favor, carregue sua planilha para visualizar o dashboard.")
+    st.info("👆 Aguardando planilha...")
     st.stop()
 
-# --- PROCESSAMENTO INTELIGENTE ---
+# --- PROCESSAMENTO ---
 xls = pd.ExcelFile(uploaded_file)
 
-# 1. PREPARAÇÃO DO VALUATION (Necessário para nomes e logos)
+# 1. VALUATION (Fonte da Verdade para Nomes e Preços)
 try:
     df_val = pd.read_excel(xls, 'Valuation')
-    
-    # Identificar colunas
     cols = df_val.columns
     c_ticker = [c for c in cols if 'TICKER' in c.upper()][0]
     c_empresa = [c for c in cols if 'EMPRESA' in c.upper()][0]
-    c_preco = [c for c in cols if 'COTAÇÃO' in c.upper()][0]
+    c_cotacao = [c for c in cols if 'COTAÇÃO' in c.upper()][0]
     c_teto = [c for c in cols if 'BAZIN' in c.upper()][0]
 
-    # Processamento
     df_val['TICKER_CLEAN'] = df_val[c_ticker].astype(str).str.strip()
-    df_val['PRECO_NUM'] = df_val[c_preco].apply(clean_currency)
+    df_val['PRECO_NUM'] = df_val[c_cotacao].apply(clean_currency)
     df_val['TETO_NUM'] = df_val[c_teto].apply(clean_currency)
     
-    # FÓRMULA SOLICITADA: ((Teto - Preço) / Preço) * 100
-    # O Streamlit Progress Bar aceita de 0.0 a 1.0 (então dividimos por 100 visualmente depois)
-    df_val['MARGEM_REAL'] = (df_val['TETO_NUM'] - df_val['PRECO_NUM']) / df_val['PRECO_NUM']
+    # FÓRMULA CORRIGIDA: ((Teto - Atual) / Atual) * 100
+    # O Streamlit entende 0.5 como 50%, então não multiplicamos por 100 aqui para usar a barra de progresso depois
+    # Mas para o calculo da margem textual, usamos a logica correta
+    df_val['MARGEM_DECIMAL'] = (df_val['TETO_NUM'] - df_val['PRECO_NUM']) / df_val['PRECO_NUM']
     
-    # Logo URL
-    df_val['LOGO_URL'] = df_val['TICKER_CLEAN'].apply(get_logo_url)
+    # Avatar
+    df_val['LOGO'] = df_val['TICKER_CLEAN'].apply(make_avatar_url)
 
-    # Tabela Final Valuation
-    df_radar = df_val[[c_empresa, 'LOGO_URL', 'PRECO_NUM', 'TETO_NUM', 'MARGEM_REAL']].copy()
-    df_radar = df_radar.sort_values('MARGEM_REAL', ascending=False)
-
-except Exception as e:
-    st.error(f"Erro ao processar Valuation: {e}")
+    df_radar = df_val[[c_empresa, 'LOGO', 'TICKER_CLEAN', 'PRECO_NUM', 'TETO_NUM', 'MARGEM_DECIMAL']].copy()
+    df_radar = df_radar.sort_values('MARGEM_DECIMAL', ascending=False)
+except:
     df_radar = pd.DataFrame()
 
-# 2. CARTEIRA (Com logo e nomes)
+# 2. CARTEIRA
 try:
     df_cart = pd.read_excel(xls, 'Carteira')
-    c_ativo_c = [c for c in df_cart.columns if 'ATIVO' in c.upper()][0]
-    c_qtd_c = [c for c in df_cart.columns if 'QUANTIDADE' in c.upper()][0]
-    c_saldo_c = [c for c in df_cart.columns if 'SALDO' in c.upper() and 'TOTAL' not in c.upper()][0]
+    c_ativo = [c for c in df_cart.columns if 'ATIVO' in c.upper()][0]
+    c_qtd = [c for c in df_cart.columns if 'QUANTIDADE' in c.upper()][0]
+    c_saldo = [c for c in df_cart.columns if 'SALDO' in c.upper() and 'TOTAL' not in c.upper()][0]
+
+    df_cart['TICKER_CLEAN'] = df_cart[c_ativo].astype(str).apply(lambda x: x.split('\n')[0].strip())
+    df_cart['QTD_NUM'] = df_cart[c_qtd].apply(clean_currency)
+    df_cart['SALDO_NUM'] = df_cart[c_saldo].apply(clean_currency)
     
-    # Limpeza básica
-    df_cart['TICKER_C'] = df_cart[c_ativo_c].astype(str).apply(lambda x: x.split('\n')[0].strip())
-    df_cart['SALDO_C'] = df_cart[c_saldo_c].apply(clean_currency)
-    df_cart['QTD_C'] = df_cart[c_qtd_c].apply(clean_currency)
-    
-    # Cruzar com Valuation para pegar Nome Completo e Logo
-    # Se não tiver no valuation, usa o próprio ticker
+    # Cruzamento de dados (VLOOKUP) para pegar nome da empresa e logo
     if not df_radar.empty:
-        # Cria dicionários de referência
         dict_nomes = pd.Series(df_val[c_empresa].values, index=df_val['TICKER_CLEAN']).to_dict()
-        dict_logos = pd.Series(df_val['LOGO_URL'].values, index=df_val['TICKER_CLEAN']).to_dict()
+        dict_logos = pd.Series(df_val['LOGO'].values, index=df_val['TICKER_CLEAN']).to_dict()
         
-        df_cart['NOME_FINAL'] = df_cart['TICKER_C'].map(dict_nomes).fillna(df_cart['TICKER_C'])
-        df_cart['LOGO_FINAL'] = df_cart['TICKER_C'].map(dict_logos).fillna("")
+        df_cart['EMPRESA'] = df_cart['TICKER_CLEAN'].map(dict_nomes).fillna(df_cart['TICKER_CLEAN'])
+        df_cart['LOGO'] = df_cart['TICKER_CLEAN'].map(dict_logos).fillna("")
     else:
-        df_cart['NOME_FINAL'] = df_cart['TICKER_C']
-        df_cart['LOGO_FINAL'] = ""
+        df_cart['EMPRESA'] = df_cart['TICKER_CLEAN']
+        df_cart['LOGO'] = ""
 
-    df_cart_show = df_cart[['LOGO_FINAL', 'NOME_FINAL', 'QTD_C', 'SALDO_C']].sort_values('SALDO_C', ascending=False)
-    patrimonio = df_cart['SALDO_C'].sum()
+    df_carteira_show = df_cart[['LOGO', 'EMPRESA', 'TICKER_CLEAN', 'QTD_NUM', 'SALDO_NUM']].copy()
+    df_carteira_show = df_carteira_show.sort_values('SALDO_NUM', ascending=False)
+    total_patrimonio = df_cart['SALDO_NUM'].sum()
+except:
+    total_patrimonio = 0
+    df_carteira_show = pd.DataFrame()
 
-except Exception as e:
-    st.error(f"Erro na Carteira: {e}")
-    patrimonio = 0
-    df_cart_show = pd.DataFrame()
+# 3. PROVENTOS (ANOS COMPLETOS)
+dados_anos = {'2024': [0.0]*12, '2025': [0.0]*12, '2026': [0.0]*12}
+anos_ordenados = ['2024', '2025', '2026']
 
-# 3. PROVENTOS (Anos Dinâmicos)
 try:
     df_prov = pd.read_excel(xls, 'Proventos')
+    # Varre a coluna A procurando "Proventos 20xx"
+    col_a = df_prov.iloc[:, 0].astype(str)
     
-    # Encontrar todas as linhas que começam com "Proventos 20.."
-    col_ref = df_prov.iloc[:, 0].astype(str)
-    linhas_anos = df_prov[col_ref.str.contains("Proventos 20", na=False)]
-    
-    dados_anos = {}
-    anos_disponiveis = []
+    for ano in ['2024', '2025', '2026']:
+        # Procura linha que contem "Proventos 20xx"
+        linha = df_prov[col_a.str.contains(f"Proventos {ano}", na=False)]
+        if not linha.empty:
+            vals = linha.iloc[0, 1:13].apply(clean_currency).values
+            dados_anos[ano] = vals
+except:
+    pass
 
-    # Processar cada ano encontrado
-    for idx, row in linhas_anos.iterrows():
-        nome_linha = row.iloc[0] # Ex: "Proventos 2025"
-        ano = re.findall(r'20\d{2}', nome_linha) # Extrai "2025"
-        if ano:
-            ano_str = ano[0]
-            anos_disponiveis.append(ano_str)
-            valores = row.iloc[1:13].apply(clean_currency).values
-            dados_anos[ano_str] = valores
+# --- DASHBOARD LAYOUT ---
 
-    # Adicionar 2026 manualmente se não existir, para garantir
-    if '2026' not in anos_disponiveis:
-        anos_disponiveis.append('2026')
-        dados_anos['2026'] = [0.0] * 12
-        
-    anos_disponiveis = sorted(list(set(anos_disponiveis))) # Remove duplicatas e ordena
+# 1. CARTEIRA
+st.subheader("🏦 Minha Carteira")
+col_p1, col_p2 = st.columns([1, 3])
+col_p1.metric("Patrimônio Total", f"R$ {total_patrimonio:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
 
-except Exception as e:
-    st.error(f"Erro nos Proventos: {e}")
-    anos_disponiveis = ['2026']
-    dados_anos = {'2026': [0.0]*12}
-
-
-# --- VISUALIZAÇÃO ---
-
-# SEÇÃO 1: PATRIMÔNIO E CARTEIRA
-col_patr, col_sel_ano = st.columns([3, 1])
-col_patr.metric("💰 Patrimônio Total Investido", f"R$ {patrimonio:,.2f}")
-
-st.markdown("### 🏢 Minha Carteira")
-if not df_cart_show.empty:
-    st.dataframe(
-        df_cart_show,
-        column_config={
-            "LOGO_FINAL": st.column_config.ImageColumn("", width="small"), # Título vazio para colar no nome
-            "NOME_FINAL": st.column_config.TextColumn("Ativo"),
-            "QTD_C": st.column_config.NumberColumn("Qtd", format="%.0f"),
-            "SALDO_C": st.column_config.NumberColumn("Saldo Atual", format="R$ %.2f"),
-        },
-        hide_index=True,
-        use_container_width=True
-    )
+if not df_carteira_show.empty:
+    with col_p2:
+        st.dataframe(
+            df_carteira_show,
+            column_config={
+                "LOGO": st.column_config.ImageColumn("", width="small"),
+                "EMPRESA": st.column_config.TextColumn("Empresa"),
+                "TICKER_CLEAN": st.column_config.TextColumn("Ticker"),
+                "QTD_NUM": st.column_config.NumberColumn("Qtd", format="%.0f"),
+                "SALDO_NUM": st.column_config.NumberColumn("Saldo", format="R$ %.2f"),
+            },
+            hide_index=True,
+            use_container_width=True
+        )
 
 st.divider()
 
-# SEÇÃO 2: PROVENTOS (SELETOR DE ANO)
-c_head1, c_head2 = st.columns([3, 1])
-c_head1.markdown("### 📅 Calendário de Recebimentos")
+# 2. PROVENTOS (ABAS POR ANO)
+st.subheader("💰 Proventos Recebidos")
+tab24, tab25, tab26 = st.tabs(["2024", "2025", "2026"])
 
-# Seletor de Ano
-ano_selecionado = c_head2.selectbox("Ano", anos_disponiveis, index=len(anos_disponiveis)-1) # Seleciona o último por padrão
-
-# Montar tabela do ano selecionado
-vals_ano = dados_anos.get(ano_selecionado, [0.0]*12)
-df_display_prov = pd.DataFrame([vals_ano], columns=['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'])
-total_ano = sum(vals_ano)
-
-st.dataframe(
-    df_display_prov,
-    column_config={k: st.column_config.NumberColumn(format="R$ %.2f") for k in df_display_prov.columns},
-    hide_index=True,
-    use_container_width=True
-)
-st.caption(f"Total acumulado em {ano_selecionado}: **R$ {total_ano:,.2f}**")
-
-st.divider()
-
-# SEÇÃO 3: RADAR (VALUATION)
-st.markdown("### 🎯 Radar de Oportunidades")
-
-if not df_radar.empty:
-    st.dataframe(
-        df_radar,
-        column_config={
-            "LOGO_URL": st.column_config.ImageColumn("", width="small"),
-            "EMPRESA": st.column_config.TextColumn("Empresa"),
-            "PRECO_NUM": st.column_config.NumberColumn("Cotação", format="R$ %.2f"),
-            "TETO_NUM": st.column_config.NumberColumn("Preço Teto", format="R$ %.2f"),
-            "MARGEM_REAL": st.column_config.ProgressColumn(
-                "Margem (%)",
-                format="%.1f%%",
-                min_value=-0.5,
-                max_value=1.0, # Ajuste conforme necessário
-            ),
-        },
-        hide_index=True,
-        use_container_width=True,
-        height=600
-    )
+def render_prov_tab(ano):
+    vals = dados_anos[ano]
+    df_tab = pd.DataFrame([vals], columns=['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT
