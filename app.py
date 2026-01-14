@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import yfinance as yf
 import os
+import re # Importante para ler a fórmula do Excel
 
 # --- 1. CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(
@@ -68,6 +69,7 @@ st.markdown("""
 # --- 3. FUNÇÕES DE TRATAMENTO ---
 
 def clean_currency(x):
+    """Limpa formatação financeira"""
     if isinstance(x, (int, float)): return float(x)
     if isinstance(x, str):
         clean = x.replace('R$', '').replace('.', '').replace(',', '.').replace('%', '').strip()
@@ -80,26 +82,41 @@ def clean_dy_percentage(x):
     if val > 0 and val < 1.0: return val * 100
     return val
 
+def extract_url_from_formula(cell_content):
+    """
+    MÁGICA: Extrai o link de dentro de =IMAGE("https://...")
+    """
+    if not isinstance(cell_content, str): return ""
+    
+    # 1. Se já for um link normal, retorna ele
+    if cell_content.startswith("http") and "IMAGE" not in cell_content:
+        return cell_content
+    
+    # 2. Se for fórmula =IMAGE("link"), usa Regex para pegar o link
+    # Procura por http... até encontrar aspas ou parênteses
+    match = re.search(r'(https?://[^\s"\'\)]+)', cell_content)
+    if match:
+        return match.group(1)
+        
+    return ""
+
 def get_logo_url(ticker, custom_site=None):
     """
-    PRIORIDADE TOTAL: Coluna A do Excel (custom_site)
+    Prioridade: Link extraído da Coluna A (Fórmula Excel)
     """
     clean_ticker = str(ticker).replace('.SA', '').strip().upper()
 
-    # 1. TENTA USAR O SITE DA PLANILHA (COLUNA A)
-    if custom_site and isinstance(custom_site, str) and len(custom_site) > 3:
-        # Limpa o link para pegar só o domínio (ex: https://www.bb.com.br -> bb.com.br)
-        domain = custom_site.replace("https://", "").replace("http://", "").replace("www.", "").split("/")[0]
-        return f"https://www.google.com/s2/favicons?domain={domain}&sz=128"
+    # 1. TENTA EXTRAIR DA FÓRMULA EXCEL (Coluna A)
+    if custom_site:
+        url_excel = extract_url_from_formula(str(custom_site))
+        if url_excel:
+            return url_excel
 
-    # 2. SE NÃO TIVER SITE NA PLANILHA, TENTA MAPA MANUAL OU CRIPTO
-    
-    # Cripto (CoinGecko)
+    # 2. FALLBACK (Se não tiver nada na Coluna A)
     if clean_ticker in ['BTC', 'BITCOIN']: return "https://assets.coingecko.com/coins/images/1/small/bitcoin.png"
     if clean_ticker in ['ETH', 'ETHEREUM']: return "https://assets.coingecko.com/coins/images/279/small/ethereum.png"
     if clean_ticker in ['SOL', 'SOLANA']: return "https://assets.coingecko.com/coins/images/4128/small/solana.png"
 
-    # Fallback genérico (Só se a coluna A estiver vazia)
     return f"https://cdn.jsdelivr.net/gh/thefintz/icon-project@master/stock_logos/{clean_ticker}.png"
 
 @st.cache_data(ttl=60)
@@ -228,16 +245,15 @@ if file_data is not None:
             target_df = file_data
 
         if not target_df.empty:
-            # NORMALIZA COLUNAS
+            # Normaliza cabeçalhos
             target_df.columns = [str(c).strip().upper() for c in target_df.columns]
             cols = target_df.columns
             
-            # --- PEGA A COLUNA A (SITE) ---
-            # Assume que a primeira coluna (índice 0) é a que tem o site, conforme sua instrução
+            # --- PEGA A COLUNA A (CONTÉM A FÓRMULA =IMAGE) ---
             col_site_data = target_df.iloc[:, 0].astype(str)
             target_df['SITE_F'] = col_site_data
 
-            # Mapeamento das outras colunas
+            # Mapeia as outras
             col_ticker = next((c for c in cols if 'TICKER' in c), None)
             col_empresa = next((c for c in cols if 'EMPRESA' in c), None)
             col_bazin = next((c for c in cols if 'BAZIN' in c), None)
@@ -263,8 +279,7 @@ if file_data is not None:
                     axis=1
                 )
                 
-                # --- AQUI ESTÁ A MÁGICA ---
-                # Passa o Ticker E o Site da Coluna A para a função
+                # --- EXTRAI O LINK DA FÓRMULA AQUI ---
                 target_df['LOGO_F'] = target_df.apply(lambda x: get_logo_url(x['TICKER_F'], x['SITE_F']), axis=1)
                 
                 target_df['NOME_F'] = target_df[col_empresa] if col_empresa else target_df['TICKER_F']
