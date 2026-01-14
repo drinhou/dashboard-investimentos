@@ -5,15 +5,15 @@ import os
 import datetime
 import pytz
 
-# --- 1. CONFIGURAÇÃO (WIDE & DARK - SEM ÍCONES) ---
+# --- 1. CONFIGURAÇÃO (WIDE & DARK) ---
 st.set_page_config(
     page_title="Dinheiro Data",
-    page_icon="📊", # Ícone neutro de gráfico
+    page_icon="📊",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# --- 2. CSS DE ALTA PRECISÃO (VERDE & CENTRALIZAÇÃO) ---
+# --- 2. CSS DE ALTA PRECISÃO (VERDE, CENTRALIZAÇÃO & CORREÇÃO DE LINKS) ---
 st.markdown("""
     <style>
         /* SCROLL SUAVE */
@@ -23,7 +23,7 @@ st.markdown("""
         .stApp { background-color: #0c120f; color: #e0e0e0; }
         * { font-family: 'Segoe UI', 'Roboto', sans-serif; }
         
-        /* HEADER PRINCIPAL (SEM ÍCONES EXAGERADOS) */
+        /* HEADER PRINCIPAL */
         .main-header {
             text-align: center;
             padding: 40px 0 10px 0;
@@ -34,7 +34,7 @@ st.markdown("""
         .main-title {
             font-size: 3rem;
             font-weight: 800;
-            background: -webkit-linear-gradient(45deg, #10b981, #34d399); /* Verde Degradê */
+            background: -webkit-linear-gradient(45deg, #10b981, #34d399);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             margin: 0;
@@ -47,7 +47,7 @@ st.markdown("""
             margin-top: 5px;
         }
 
-        /* BOTÕES DE NAVEGAÇÃO (VERDES) */
+        /* --- CORREÇÃO DO AZUL NOS BOTÕES DE NAVEGAÇÃO --- */
         .nav-card {
             background-color: #111a16;
             border: 1px solid #1f2937;
@@ -55,21 +55,37 @@ st.markdown("""
             padding: 20px;
             text-align: center;
             cursor: pointer;
-            text-decoration: none;
-            color: white;
+            text-decoration: none !important; /* Remove sublinhado */
             display: block;
             margin-bottom: 20px;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
+        /* Força a cor dos textos dentro do link para não ficar azul */
+        .nav-card span, .nav-card div {
+            text-decoration: none !important;
+        }
+        .nav-title { 
+            font-weight: 700; 
+            font-size: 1.1rem; 
+            display: block; 
+            color: #e5e7eb !important; /* Força Branco */
+        }
+        .nav-desc { 
+            font-size: 0.8rem; 
+            color: #6b7280 !important; /* Força Cinza */
+            display: block; 
+            margin-top: 5px; 
+        }
         .nav-card:hover {
-            border-color: #10b981; /* Verde no Hover */
+            border-color: #10b981;
             transform: translateY(-3px);
             box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.1);
         }
-        .nav-title { font-weight: 700; font-size: 1.1rem; display: block; color: #e5e7eb; }
-        .nav-desc { font-size: 0.8rem; color: #6b7280; display: block; margin-top: 5px; }
+        .nav-card:hover .nav-title {
+            color: #10b981 !important; /* Fica verde ao passar o mouse */
+        }
 
-        /* --- CENTRALIZAÇÃO ABSOLUTA DAS TABELAS --- */
+        /* --- CENTRALIZAÇÃO TOTAL DAS TABELAS (FORÇA BRUTA) --- */
         
         div[data-testid="stDataFrame"] {
             border: 1px solid #1f2937;
@@ -79,8 +95,8 @@ st.markdown("""
         
         /* Cabeçalhos: Centralizados */
         div[data-testid="stDataFrame"] div[role="columnheader"] {
-            background-color: #141f1b; /* Verde muito escuro */
-            color: #6ee7b7; /* Verde texto */
+            background-color: #141f1b;
+            color: #6ee7b7;
             font-size: 12px;
             font-weight: 700;
             text-transform: uppercase;
@@ -91,14 +107,20 @@ st.markdown("""
         }
         
         /* Células: Centralizadas Horizontal e Verticalmente */
-        div[data-testid="stDataFrame"] div[role="gridcell"] {
+        /* O seletor > div força o alinhamento do conteúdo interno que o Streamlit gera */
+        div[data-testid="stDataFrame"] div[role="gridcell"] > div {
             display: flex;
             justify-content: center !important;
             align-items: center !important;
             text-align: center !important;
-            font-size: 13px;
-            background-color: #0c120f;
+            width: 100%;
             height: 100%;
+        }
+        div[data-testid="stDataFrame"] div[role="gridcell"] {
+            display: flex;
+            justify-content: center !important;
+            align-items: center !important;
+            background-color: #0c120f;
         }
         
         /* Logos: Centralizadas */
@@ -109,11 +131,10 @@ st.markdown("""
             background-color: #fff;
             width: 30px;
             height: 30px;
-            display: block;
-            margin: 0 auto;
+            object-fit: contain;
         }
 
-        /* TÍTULOS DE SEÇÃO (VERDE) */
+        /* TÍTULOS DE SEÇÃO */
         .section-wrapper {
             margin-top: 60px;
             margin-bottom: 20px;
@@ -122,7 +143,7 @@ st.markdown("""
             font-size: 1.6rem;
             font-weight: 700;
             color: #f3f4f6;
-            border-left: 6px solid #10b981; /* Verde Puro */
+            border-left: 6px solid #10b981;
             padding-left: 15px;
             display: flex;
             align-items: center;
@@ -131,12 +152,13 @@ st.markdown("""
         .section-desc {
             font-size: 0.9rem;
             color: #9ca3af;
-            margin-top: 5px;
-            margin-left: 21px; /* Alinhado com o texto do título */
+            margin-top: 8px;
+            margin-left: 21px;
             max-width: 800px;
+            line-height: 1.4;
         }
         
-        /* BADGES (ETIQUETAS VERDES) */
+        /* BADGES */
         .status-badge {
             background-color: #064e3b;
             color: #34d399;
@@ -258,7 +280,7 @@ def get_br_prices(ticker_list):
 
 greeting_text, time_text = get_time_greeting()
 
-# HEADER LIMPO
+# HEADER
 st.markdown(f"""
     <div class='main-header'>
         <h1 class='main-title'>Dinheiro Data</h1>
@@ -266,32 +288,38 @@ st.markdown(f"""
     </div>
 """, unsafe_allow_html=True)
 
-# NAVEGAÇÃO
+# NAVEGAÇÃO (LINK ANCHORS SEM COR AZUL)
 nav1, nav2, nav3 = st.columns(3)
 with nav1:
-    st.markdown("""<a href='#panorama' class='nav-card'>
+    st.markdown("""
+    <a href='#panorama' class='nav-card'>
         <span class='nav-title'>🌍 Panorama Global</span>
         <span class='nav-desc'>Visão Macro</span>
-    </a>""", unsafe_allow_html=True)
+    </a>
+    """, unsafe_allow_html=True)
 with nav2:
-    st.markdown("""<a href='#radar-bazin' class='nav-card'>
+    st.markdown("""
+    <a href='#radar-bazin' class='nav-card'>
         <span class='nav-title'>🎯 Radar Bazin</span>
         <span class='nav-desc'>Análise de Preço Teto</span>
-    </a>""", unsafe_allow_html=True)
+    </a>
+    """, unsafe_allow_html=True)
 with nav3:
-    st.markdown("""<a href='#dividendos' class='nav-card'>
+    st.markdown("""
+    <a href='#dividendos' class='nav-card'>
         <span class='nav-title'>💰 Dividendos</span>
         <span class='nav-desc'>Projeção de Renda</span>
-    </a>""", unsafe_allow_html=True)
+    </a>
+    """, unsafe_allow_html=True)
 
 M = get_market_data_distributed()
 
-# --- 1. PANORAMA DE MERCADO ---
+# --- 1. PANORAMA GLOBAL ---
 st.markdown("<div id='panorama'></div>", unsafe_allow_html=True)
 st.markdown("""
 <div class='section-wrapper'>
     <div class='section-header'>
-        <span>🌍 Panorama de Mercado</span>
+        <span>🌍 Panorama Global</span>
     </div>
 </div>
 """, unsafe_allow_html=True)
@@ -382,11 +410,11 @@ count_opp = len(df_radar[df_radar['MARGEM_VAL'] > 10]) if not df_radar.empty els
 st.markdown(f"""
 <div class='section-wrapper'>
     <div class='section-header'>
-        <span>🎯 Radar de Preço Justo</span>
+        <span>🎯 Radar Bazin</span>
         <span class='status-badge'>{count_opp} Ativos com desconto (>10%)</span>
     </div>
     <div class='section-desc'>
-        O Preço Teto é calculado utilizando a metodologia de Décio Bazin (Dividendo Médio / 6%), visando identificar ativos que pagam bons dividendos a preços descontados.
+        O Preço Teto é calculado utilizando a metodologia de Décio Bazin (adaptado à nossa visão), visando identificar ativos que pagam bons dividendos a preços descontados.
     </div>
 </div>
 """, unsafe_allow_html=True)
@@ -421,7 +449,7 @@ count_dy = len(df_div[df_div['DY_F'] > 8]) if not df_div.empty else 0
 st.markdown(f"""
 <div class='section-wrapper'>
     <div class='section-header'>
-        <span>💰 Dividendos Projetados</span>
+        <span>💰 Dividendos</span>
         <span class='status-badge'>{count_dy} Ativos com Yield > 8%</span>
     </div>
     <div class='section-desc'>
