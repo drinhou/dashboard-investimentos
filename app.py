@@ -9,66 +9,39 @@ st.set_page_config(
     page_title="Dinheiro Data",
     page_icon="🦅",
     layout="wide",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="collapsed" # Menu recolhido para focar no conteúdo
 )
 
-# --- 2. CSS PREMIUM (UI/UX) ---
+# --- 2. CSS PREMIUM (UI/UX ESTILO BLOOMBERG) ---
 st.markdown("""
     <style>
         /* Fundo e Fonte */
         .stApp { background-color: #0e1117; color: #e0e0e0; }
         * { font-family: 'Segoe UI', 'Roboto', sans-serif; }
         
-        /* Título Pequeno e Elegante */
-        .brand-header {
-            font-size: 1.2rem;
-            font-weight: 700;
-            color: #60a5fa; /* Azul claro */
-            margin-bottom: 0px;
-            padding-bottom: 0px;
-            border-bottom: 1px solid #1f2937;
-        }
+        /* Remove padding excessivo do topo */
+        .block-container { padding-top: 2rem; padding-bottom: 5rem; }
 
-        /* ABAS (MENU SUPERIOR) */
-        .stTabs [data-baseweb="tab-list"] {
-            gap: 20px;
-            background-color: #0e1117;
-            padding-top: 10px;
-            padding-bottom: 10px;
-        }
-        .stTabs [data-baseweb="tab"] {
-            height: 50px;
-            white-space: pre-wrap;
-            background-color: #1f2937;
-            border-radius: 8px;
-            color: #9ca3af;
-            font-weight: 600;
-            padding: 0 20px; 
-            border: 1px solid #374151;
-        }
-        .stTabs [data-baseweb="tab"][aria-selected="true"] {
-            background-color: #2563eb; /* Azul Selecionado */
-            color: white;
-            border-color: #3b82f6;
-        }
-
-        /* TABELAS CENTRAIS */
+        /* HEADER DAS TABELAS (Centralizado) */
         div[data-testid="stDataFrame"] div[role="columnheader"] {
             background-color: #111827;
             color: #9ca3af;
-            font-size: 12px;
+            font-size: 13px;
             font-weight: 700;
             text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid #374151;
             text-align: center !important;
             justify-content: center !important;
-            border-bottom: 2px solid #374151;
         }
+
+        /* CÉLULAS DAS TABELAS (Centralizadas) */
         div[data-testid="stDataFrame"] div[role="gridcell"] {
             display: flex;
             justify-content: center !important;
             align-items: center !important;
             text-align: center !important;
-            font-size: 13px;
+            font-size: 14px;
             font-weight: 500;
         }
 
@@ -79,13 +52,44 @@ st.markdown("""
             border: 1px solid #4b5563;
             padding: 2px;
             background-color: white;
-            width: 28px;
-            height: 28px;
+            width: 30px;
+            height: 30px;
+        }
+
+        /* TÍTULOS DE SEÇÃO */
+        .section-header {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: #f3f4f6;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            border-left: 5px solid #3b82f6; /* Barra Azul */
+            padding-left: 15px;
+            background: linear-gradient(90deg, #1f2937 0%, transparent 100%);
+            padding-top: 5px;
+            padding-bottom: 5px;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        /* SAUDAÇÃO */
+        .greeting-card {
+            text-align: center;
+            padding: 20px;
+            background: #1f2937;
+            border-radius: 12px;
+            border: 1px solid #374151;
+            margin-bottom: 20px;
         }
     </style>
 """, unsafe_allow_html=True)
 
-# --- 3. FUNÇÕES ---
+# --- 3. FUNÇÕES AUXILIARES ---
+
+def get_greeting():
+    h = datetime.datetime.now().hour
+    if 5 <= h < 12: return "Bom dia"
+    elif 12 <= h < 18: return "Boa tarde"
+    return "Boa noite"
 
 def clean_currency(x):
     if isinstance(x, (int, float)): return float(x)
@@ -105,7 +109,7 @@ def get_logo_url(ticker):
     if not isinstance(ticker, str): return ""
     clean = ticker.replace('.SA', '').strip().upper()
     
-    # SUA LISTA DE SITES
+    # LISTA MANUAL DE SITES
     meus_sites = {
         'CXSE3': 'caixaseguradora.com.br', 'BBSE3': 'bbseguros.com.br', 'ODPV3': 'odontoprev.com.br',
         'BBAS3': 'bb.com.br', 'ABCB4': 'abcbrasil.com.br', 'ITUB4': 'itau.com.br',
@@ -129,13 +133,26 @@ def get_logo_url(ticker):
 @st.cache_data(ttl=60)
 def get_market_data_distributed():
     """
-    Separação: EUA | BRASIL | COMMODITIES | CRIPTO
+    5 PILARES DE MERCADO
     """
     groups = {
-        'USA': {'S&P 500': '^GSPC', 'NASDAQ': '^IXIC', 'DOW JONES': '^DJI', 'VIX': '^VIX', 'TESLA': 'TSLA', 'APPLE': 'AAPL'},
-        'BRASIL': {'IBOVESPA': '^BVSP', 'DÓLAR': 'BRL=X', 'EURO': 'EURBRL=X', 'VALE': 'VALE3.SA', 'PETROBRAS': 'PETR4.SA', 'ITAU': 'ITUB4.SA'},
-        'COMMODITIES': {'OURO': 'GC=F', 'PRATA': 'SI=F', 'PETRÓLEO WTI': 'CL=F', 'PETRÓLEO BRENT': 'BZ=F', 'GÁS NAT.': 'NG=F', 'COBRE': 'HG=F'},
-        'CRIPTO': {'BITCOIN': 'BTC-USD', 'ETHEREUM': 'ETH-USD', 'SOLANA': 'SOL-USD', 'BNB': 'BNB-USD', 'XRP': 'XRP-USD', 'DOGE': 'DOGE-USD'}
+        'USA': {
+            'S&P 500': '^GSPC', 'NASDAQ': '^IXIC', 'DOW JONES': '^DJI', 'VIX (Medo)': '^VIX'
+        },
+        'BRASIL': {
+            'IBOVESPA': '^BVSP', 'IFIX (FIIs)': 'IFIX.SA', 
+            'VALE': 'VALE3.SA', 'PETROBRAS': 'PETR4.SA', 'ITAU': 'ITUB4.SA', 'BB': 'BBAS3.SA'
+        },
+        'MOEDAS': {
+            'DÓLAR': 'BRL=X', 'EURO': 'EURBRL=X', 'DXY (Global)': 'DX-Y.NYB', 'LIBRA': 'GBPBRL=X'
+        },
+        'COMMODITIES': {
+            'OURO': 'GC=F', 'PRATA': 'SI=F', 'COBRE': 'HG=F', # Sequencia solicitada
+            'BRENT OIL': 'BZ=F', 'GÁS NAT.': 'NG=F', 'SOJA': 'ZS=F'
+        },
+        'CRIPTO': {
+            'BITCOIN': 'BTC-USD', 'ETHEREUM': 'ETH-USD', 'SOLANA': 'SOL-USD', 'BNB': 'BNB-USD'
+        }
     }
     
     final_dfs = {}
@@ -158,10 +175,7 @@ def get_market_data_distributed():
                 except: rows.append([name, 0.0, 0.0])
         except: pass
         
-        # Garante 6 linhas para alinhamento
-        while len(rows) < 6: rows.append(["-", 0.0, 0.0])
-        
-        # DataFrame SEM Var R$
+        # DataFrame (Sem Var R$, apenas %)
         df = pd.DataFrame(rows, columns=["Ativo", "Preço", "Var%"])
         final_dfs[cat] = df
         
@@ -180,53 +194,61 @@ def get_br_prices(ticker_list):
         return prices
     except: return {}
 
-# --- 4. APP ---
+# --- 4. APP LAYOUT ---
 
-# Header Discreto
-st.markdown("<div class='brand-header'>🦅 Dinheiro Data</div>", unsafe_allow_html=True)
+# Saudação
+st.markdown(f"""
+    <div class='greeting-card'>
+        <h1 style='margin:0; font-size: 2rem;'>🦅 {get_greeting()}, Investidor</h1>
+        <p style='color: #9ca3af; margin-top: 5px;'>Sua central de inteligência financeira em tempo real.</p>
+    </div>
+""", unsafe_allow_html=True)
 
-# Menu Superior (ABAS)
-tab_pano, tab_radar, tab_div = st.tabs(["🌍 Panorama de Mercado", "🎯 Radar Bazin", "💰 Dividendos"])
+# Carregamento de Dados
+M = get_market_data_distributed()
 
-# --- ABA 1: PANORAMA ---
-with tab_pano:
-    M = get_market_data_distributed()
-    
-    # Função para Estilizar Tabela (Sem Var R$)
-    def show_table(col, title, df):
-        col.markdown(f"**{title}**")
-        if not df.empty:
-            def color_var(val):
-                color = '#4ade80' if val > 0 else '#f87171' if val < 0 else '#6b7280'
-                return f'color: {color}; font-weight: bold;'
+# --- SEÇÃO 1: PANORAMA (5 COLUNAS DISTRIBUÍDAS) ---
+st.markdown("<div class='section-header'>🌍 Panorama de Mercado</div>", unsafe_allow_html=True)
 
-            styled_df = df.style.format({
-                "Preço": "{:.2f}",
-                "Var%": "{:+.2f}%"
-            }).map(color_var, subset=['Var%'])
-            
-            col.dataframe(
-                styled_df,
-                column_config={
-                    "Ativo": st.column_config.TextColumn("Ativo", width="small"),
-                    "Preço": st.column_config.NumberColumn("Cotação", width="small"),
-                    "Var%": st.column_config.TextColumn("Var %", width="small")
-                },
-                hide_index=True,
-                use_container_width=True
-            )
+# Estilo para as tabelas de mercado (Verde/Vermelho na porcentagem)
+def show_mini_table(col, title, df):
+    col.write(f"**{title}**")
+    if not df.empty:
+        def color_var(val):
+            color = '#4ade80' if val > 0 else '#f87171' if val < 0 else '#6b7280'
+            return f'color: {color}; font-weight: bold;'
 
-    # 4 Colunas
-    c1, c2, c3, c4 = st.columns(4)
-    show_table(c1, "🇺🇸 Estados Unidos", M['USA'])
-    show_table(c2, "🇧🇷 Brasil", M['BRASIL'])
-    show_table(c3, "🛢️ Commodities", M['COMMODITIES'])
-    show_table(c4, "💎 Criptoativos", M['CRIPTO'])
+        styled_df = df.style.format({
+            "Preço": "{:.2f}",
+            "Var%": "{:+.2f}%"
+        }).map(color_var, subset=['Var%'])
+        
+        col.dataframe(
+            styled_df,
+            column_config={
+                "Ativo": st.column_config.TextColumn("Ativo"), # Width auto
+                "Preço": st.column_config.NumberColumn("Cotação"), # Width auto
+                "Var%": st.column_config.TextColumn("Var %") # Width auto
+            },
+            hide_index=True,
+            use_container_width=True
+        )
 
+# Layout: 3 Colunas em Cima, 2 Em Baixo (Para melhor leitura)
+row1_1, row1_2, row1_3 = st.columns(3)
+with row1_1: show_mini_table(row1_1, "🇺🇸 Índices EUA", M['USA'])
+with row1_2: show_mini_table(row1_2, "🇧🇷 Índices Brasil", M['BRASIL'])
+with row1_3: show_mini_table(row1_3, "💱 Moedas Fortes", M['MOEDAS'])
 
-# --- CARREGAMENTO DE DADOS (COMUM AS ABAS 2 E 3) ---
+st.write("") # Espaçamento
+
+row2_1, row2_2 = st.columns(2)
+with row2_1: show_mini_table(row2_1, "🛢️ Commodities", M['COMMODITIES'])
+with row2_2: show_mini_table(row2_2, "💎 Criptoativos", M['CRIPTO'])
+
+# --- PROCESSAMENTO EXCEL ---
 df_radar, df_div = pd.DataFrame(), pd.DataFrame()
-uploaded = st.sidebar.file_uploader("📂 Carregar PEC", type=['xlsx', 'csv'])
+uploaded = st.sidebar.file_uploader("📂 Atualizar Planilha", type=['xlsx', 'csv'])
 file_data = None
 
 if uploaded: file_data = pd.read_csv(uploaded) if uploaded.name.endswith('.csv') else pd.ExcelFile(uploaded)
@@ -270,56 +292,54 @@ if file_data is not None:
                 df_div = target_df[target_df['DY_F'] > 0][['Logo', 'Ativo', 'DPA_F', 'DY_F']].sort_values('DY_F', ascending=False)
     except: pass
 
-# --- ABA 2: RADAR BAZIN ---
-with tab_radar:
-    st.caption("Ações ordenadas pela margem de segurança em relação ao Preço Teto Bazin.")
-    if not df_radar.empty:
-        # Estilo Margem
-        def style_margin(v):
-            color = '#4ade80' if v > 10 else '#facc15' if v > 0 else '#f87171'
-            return f'color: {color}; font-weight: bold;'
+# --- SEÇÃO 2: RADAR BAZIN ---
+st.markdown("<div class='section-header'>🎯 Radar de Preço Justo (Bazin)</div>", unsafe_allow_html=True)
 
-        styled_radar = df_radar.style.format({
-            "BAZIN_F": "R$ {:.2f}", "PRECO_F": "R$ {:.2f}", "MARGEM_VAL": "{:+.1f}%"
-        }).map(style_margin, subset=['MARGEM_VAL'])
+if not df_radar.empty:
+    # Função de Estilo da Margem (Fundo Colorido Suave)
+    def style_margin(v):
+        if v > 10: return 'background-color: #064e3b; color: #4ade80; font-weight: bold;'
+        if v > 0: return 'background-color: #422006; color: #facc15; font-weight: bold;'
+        return 'background-color: #450a0a; color: #f87171; font-weight: bold;'
 
-        st.dataframe(
-            styled_radar,
-            column_config={
-                "Logo": st.column_config.ImageColumn("", width="small"),
-                "Ativo": st.column_config.TextColumn("Ativo", width="medium"),
-                "BAZIN_F": st.column_config.NumberColumn("Preço Teto", width="small"),
-                "PRECO_F": st.column_config.NumberColumn("Cotação", width="small"),
-                "MARGEM_VAL": st.column_config.TextColumn("Margem", width="small"),
-            },
-            hide_index=True,
-            use_container_width=True
-        )
-    else:
-        st.info("Carregando dados da planilha...")
+    styled_radar = df_radar.style.format({
+        "BAZIN_F": "R$ {:.2f}", "PRECO_F": "R$ {:.2f}", "MARGEM_VAL": "{:+.1f}%"
+    }).map(style_margin, subset=['MARGEM_VAL'])
 
-# --- ABA 3: DIVIDENDOS ---
-with tab_div:
-    st.caption("Ranking de maiores pagadoras de dividendos projetadas.")
-    if not df_div.empty:
-        # Estilo DY
-        def style_dy(v):
-            return 'color: #4ade80; font-weight: bold;' if v > 6 else ''
+    st.dataframe(
+        styled_radar,
+        column_config={
+            "Logo": st.column_config.ImageColumn(""), # Logo sem nome
+            "Ativo": st.column_config.TextColumn("Ativo"),
+            "BAZIN_F": st.column_config.NumberColumn("Preço Teto"),
+            "PRECO_F": st.column_config.NumberColumn("Cotação"),
+            "MARGEM_VAL": st.column_config.TextColumn("Margem"),
+        },
+        hide_index=True,
+        use_container_width=True
+    )
+else:
+    st.info("Carregando inteligência de dados...")
 
-        styled_div = df_div.style.format({
-            "DPA_F": "R$ {:.2f}", "DY_F": "{:.2f}%"
-        }).map(style_dy, subset=['DY_F'])
+# --- SEÇÃO 3: DIVIDENDOS ---
+st.markdown("<div class='section-header'>💰 Projeção de Renda Passiva</div>", unsafe_allow_html=True)
 
-        st.dataframe(
-            styled_div,
-            column_config={
-                "Logo": st.column_config.ImageColumn("", width="small"), # Largura igual ao Bazin
-                "Ativo": st.column_config.TextColumn("Ativo", width="medium"),
-                "DPA_F": st.column_config.NumberColumn("Div. / Ação", width="small"),
-                "DY_F": st.column_config.TextColumn("Yield Projetado", width="small"),
-            },
-            hide_index=True,
-            use_container_width=True
-        )
-    else:
-        st.info("Carregando dados da planilha...")
+if not df_div.empty:
+    def style_dy(v):
+        return 'background-color: #064e3b; color: #4ade80; font-weight: bold;' if v > 6 else ''
+
+    styled_div = df_div.style.format({
+        "DPA_F": "R$ {:.2f}", "DY_F": "{:.2f}%"
+    }).map(style_dy, subset=['DY_F'])
+
+    st.dataframe(
+        styled_div,
+        column_config={
+            "Logo": st.column_config.ImageColumn(""),
+            "Ativo": st.column_config.TextColumn("Ativo"),
+            "DPA_F": st.column_config.NumberColumn("Div. / Ação"),
+            "DY_F": st.column_config.TextColumn("Yield Projetado"),
+        },
+        hide_index=True,
+        use_container_width=True
+    )
