@@ -1,11 +1,11 @@
-import streamlit as st
+\import streamlit as st
 import pandas as pd
 import yfinance as yf
 import os
 import datetime
 import pytz
 
-# ========== 1. CONFIGURAÇÃO ==========
+# ========== 1. CONFIGURAÇÃO (MODO TERMINAL) ==========
 st.set_page_config(
     page_title="Dinheiro Data | Onyx",
     page_icon="⚡",
@@ -13,24 +13,24 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# ========== 2. DESIGN SYSTEM "ONYX" (CSS AVANÇADO) ==========
+# ========== 2. ENGENHARIA VISUAL (CSS AVANÇADO) ==========
 st.markdown("""
     <style>
-        /* IMPORTAR FONTE MODERNA */
+        /* IMPORTAR FONTE PREMIUM */
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
 
-        /* --- VARIÁVEIS DE COR (PALETA NEON DARK) --- */
+        /* --- VARIÁVEIS DE COR (PALETA ONYX NEON) --- */
         :root {
-            --bg-deep: #050505;
-            --glass-bg: rgba(20, 20, 20, 0.7);
-            --glass-border: rgba(255, 255, 255, 0.08);
-            --neon-green: #00ff9d;
-            --deep-green: #064e3b;
+            --bg-deep: #050505;          /* Preto Absoluto */
+            --glass-bg: rgba(20, 20, 20, 0.6); /* Vidro Escuro */
+            --glass-border: rgba(255, 255, 255, 0.1); /* Borda Sutil */
+            --neon-green: #00ff9d;       /* Verde Cyberpunk */
+            --dark-green: #064e3b;       /* Verde Profundo */
             --text-main: #ffffff;
             --text-dim: #888888;
         }
 
-        /* --- RESET GLOBAL --- */
+        /* --- RESET & BASE --- */
         html, body, [class*="css"] {
             font-family: 'Inter', sans-serif;
             background-color: var(--bg-deep);
@@ -38,123 +38,150 @@ st.markdown("""
             scroll-behavior: smooth !important;
         }
         
-        /* Remove excessos do Streamlit */
+        /* Limpeza do Streamlit */
         #MainMenu, footer, header { visibility: hidden; }
         [data-testid="stElementToolbar"] { display: none !important; }
-        .block-container { padding-top: 2rem; padding-bottom: 5rem; }
+        .block-container { padding-top: 1rem; padding-bottom: 5rem; }
 
-        /* --- HEADER HERO --- */
+        /* --- ANIMAÇÕES --- */
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(0, 255, 157, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(0, 255, 157, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(0, 255, 157, 0); }
+        }
+
+        /* --- HEADER HERO (CINEMATOGRÁFICO) --- */
         .hero-container {
             text-align: center;
-            padding: 60px 20px;
-            background: radial-gradient(circle at center, rgba(0, 255, 157, 0.08) 0%, transparent 60%);
+            padding: 80px 20px 40px 20px;
+            background: radial-gradient(circle at center, rgba(0, 255, 157, 0.05) 0%, transparent 70%);
             margin-bottom: 40px;
-            border-bottom: 1px solid var(--glass-border);
+            animation: fadeInUp 0.8s ease-out;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
         }
         
         .hero-title {
-            font-size: 4rem;
+            font-size: 4.5rem;
             font-weight: 800;
-            letter-spacing: -2px;
-            background: linear-gradient(180deg, #fff 0%, #aaa 100%);
+            letter-spacing: -3px;
+            background: linear-gradient(180deg, #ffffff 0%, #666666 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             margin: 0;
-            text-shadow: 0 0 30px rgba(0, 255, 157, 0.2);
+            text-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
         
         .hero-subtitle {
-            font-size: 1.1rem;
+            font-size: 0.9rem;
             color: var(--neon-green);
-            font-weight: 500;
+            font-weight: 600;
             text-transform: uppercase;
-            letter-spacing: 2px;
-            margin-top: 10px;
+            letter-spacing: 3px;
+            margin-top: 15px;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 10px;
+            gap: 12px;
         }
         
-        .live-dot {
+        .live-indicator {
             width: 8px;
             height: 8px;
             background-color: var(--neon-green);
             border-radius: 50%;
-            box-shadow: 0 0 10px var(--neon-green);
             animation: pulse 2s infinite;
         }
-        
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
 
-        /* --- CARDS DE NAVEGAÇÃO (GLASSMORPHISM) --- */
+        /* --- CARTÕES DE NAVEGAÇÃO (GLASSMORPHISM) --- */
         .glass-card {
             background: var(--glass-bg);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
             border: 1px solid var(--glass-border);
-            border-radius: 16px;
-            padding: 25px;
+            border-radius: 20px; /* Mais arredondado */
+            padding: 30px;
             text-align: center;
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
             cursor: pointer;
-            position: relative;
-            overflow: hidden;
             text-decoration: none !important;
             display: block;
             height: 100%;
+            position: relative;
+            overflow: hidden;
         }
         
-        .glass-card::before {
-            content: '';
+        /* Brilho ao passar o mouse */
+        .glass-card::after {
+            content: "";
             position: absolute;
-            top: 0; left: 0; width: 100%; height: 2px;
-            background: linear-gradient(90deg, transparent, var(--neon-green), transparent);
+            top: -50%; left: -50%; width: 200%; height: 200%;
+            background: radial-gradient(circle, rgba(0,255,157,0.1) 0%, transparent 60%);
             opacity: 0;
-            transition: 0.3s;
+            transform: scale(0.5);
+            transition: 0.4s;
         }
         
         .glass-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 30px -10px rgba(0, 255, 157, 0.15);
-            border-color: rgba(0, 255, 157, 0.3);
+            transform: translateY(-8px);
+            border-color: rgba(0, 255, 157, 0.4);
+            box-shadow: 0 15px 40px -10px rgba(0, 0, 0, 0.8);
         }
+        .glass-card:hover::after { opacity: 1; transform: scale(1); }
         
-        .glass-card:hover::before { opacity: 1; }
+        .card-icon { font-size: 2rem; margin-bottom: 15px; display: block; filter: grayscale(100%); transition: 0.3s; }
+        .glass-card:hover .card-icon { filter: grayscale(0%); transform: scale(1.1); }
         
-        .card-icon { font-size: 1.8rem; margin-bottom: 10px; display: block; }
-        .card-title { font-size: 1.2rem; font-weight: 700; color: #fff !important; display: block; }
-        .card-desc { font-size: 0.85rem; color: #888 !important; margin-top: 5px; display: block; }
+        .card-title { font-size: 1.2rem; font-weight: 700; color: #fff; display: block; margin-bottom: 5px; }
+        .card-desc { font-size: 0.8rem; color: #666; display: block; font-weight: 500; }
 
-        /* --- CONTAINER DE SEÇÃO (FUTURISTA) --- */
+        /* --- TÍTULOS DE SEÇÃO (FUTURISTA) --- */
         .section-box {
-            margin-top: 60px;
-            margin-bottom: 20px;
-            padding: 20px;
+            margin-top: 80px;
+            margin-bottom: 25px;
+            padding-left: 20px;
             border-left: 4px solid var(--neon-green);
             background: linear-gradient(90deg, rgba(0, 255, 157, 0.05) 0%, transparent 100%);
-            border-radius: 0 12px 12px 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-radius: 0 16px 16px 0;
+            padding-top: 15px;
+            padding-bottom: 15px;
+            animation: fadeInUp 0.6s ease-out;
         }
-        .section-title { font-size: 1.8rem; font-weight: 700; color: #fff; margin: 0; }
-        .section-meta { font-size: 0.9rem; color: var(--neon-green); font-family: 'Courier New', monospace; margin-top: 5px; }
+        .section-title { font-size: 1.5rem; font-weight: 800; color: #fff; text-transform: uppercase; letter-spacing: 1px; }
+        .section-badge { 
+            background: rgba(0, 255, 157, 0.1); 
+            color: var(--neon-green); 
+            padding: 6px 14px; 
+            border-radius: 8px; 
+            font-size: 0.75rem; 
+            font-weight: 700; 
+            border: 1px solid rgba(0, 255, 157, 0.2);
+            margin-right: 20px;
+        }
 
-        /* --- TABELAS REESTILIZADAS (CLEAN & CENTER) --- */
+        /* --- TABELAS (ESTILO TERMINAL DE TRADING) --- */
         div[data-testid="stDataFrame"] {
-            background-color: #0a0a0a !important;
-            border: 1px solid #222 !important;
+            background-color: #080808 !important;
+            border: 1px solid #1f1f1f !important;
             border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            box-shadow: 0 4px 30px rgba(0,0,0,0.5);
         }
 
         /* Header Tabela */
         div[data-testid="stDataFrame"] div[role="columnheader"] {
-            background-color: #111 !important;
-            color: #888 !important;
+            background-color: #0f0f0f !important;
+            color: #666 !important;
             font-size: 11px !important;
-            font-weight: 700 !important;
+            font-weight: 800 !important;
             text-transform: uppercase;
-            letter-spacing: 1px;
-            border-bottom: 1px solid #333 !important;
+            letter-spacing: 1.5px;
+            border-bottom: 1px solid #222 !important;
             text-align: center !important;
             justify-content: center !important;
             display: flex;
@@ -162,18 +189,18 @@ st.markdown("""
 
         /* Células Tabela */
         div[data-testid="stDataFrame"] div[role="gridcell"] {
-            background-color: #0a0a0a !important;
-            color: #eee !important;
+            background-color: #080808 !important;
+            color: #e0e0e0 !important;
             font-size: 13px !important;
             font-weight: 500 !important;
-            border-bottom: 1px solid #1a1a1a !important;
+            border-bottom: 1px solid #161616 !important;
             display: flex;
             justify-content: center !important;
             align-items: center !important;
-            pointer-events: none !important; /* BLOQUEIA SELEÇÃO */
+            pointer-events: none !important; /* BLOQUEIO TOTAL DE SELEÇÃO */
         }
         
-        /* Centralização Interna */
+        /* Garante centralização interna */
         div[data-testid="stDataFrame"] div[role="gridcell"] > div {
             display: flex;
             justify-content: center !important;
@@ -182,7 +209,7 @@ st.markdown("""
             text-align: center !important;
         }
 
-        /* Logos Circulares */
+        /* Logos Circulares com Borda Neon Hover (mesmo sem clique) */
         div[data-testid="stDataFrame"] img {
             border-radius: 50%;
             width: 28px !important;
@@ -195,10 +222,10 @@ st.markdown("""
             margin: 0 auto;
         }
 
-        /* INPUTS DE PESQUISA (GLOW) */
+        /* INPUT DE PESQUISA (CYBERPUNK) */
         div[data-baseweb="base-input"] {
             background-color: #0a0a0a !important;
-            border-color: #333 !important;
+            border: 1px solid #333 !important;
             border-radius: 8px !important;
             color: white !important;
         }
@@ -206,30 +233,32 @@ st.markdown("""
             border-color: var(--neon-green) !important;
             box-shadow: 0 0 15px rgba(0, 255, 157, 0.1) !important;
         }
-        input { color: white !important; }
+        input { color: white !important; font-weight: 600 !important; }
 
         /* FOOTER */
         .legal-footer {
-            margin-top: 80px;
+            margin-top: 100px;
             padding: 40px;
             border-top: 1px solid #222;
             text-align: center;
-            font-size: 0.75rem;
-            color: #555;
-            background: #080808;
+            font-size: 0.7rem;
+            color: #444;
+            background: #050505;
+            letter-spacing: 0.5px;
+            line-height: 1.6;
         }
     </style>
 """, unsafe_allow_html=True)
 
-# ========== 3. LÓGICA ROBUSTA ==========
+# ========== 3. LÓGICA (BACKEND) ==========
 
 def get_time_greeting():
     tz = pytz.timezone('America/Sao_Paulo')
     now = datetime.datetime.now(tz)
     h = now.hour
-    greeting = "Boa noite"
-    if 5 <= h < 12: greeting = "Bom dia"
-    elif 12 <= h < 18: greeting = "Boa tarde"
+    greeting = "BOA NOITE"
+    if 5 <= h < 12: greeting = "BOM DIA"
+    elif 12 <= h < 18: greeting = "BOA TARDE"
     return greeting, now.strftime("%H:%M")
 
 def clean_currency(x):
@@ -308,7 +337,6 @@ def get_br_prices(ticker_list):
         return prices
     except: return {}
 
-# Função para carregar dados
 def load_data():
     df_radar, df_div = pd.DataFrame(), pd.DataFrame()
     file_data = None
@@ -351,7 +379,7 @@ def load_data():
         except: pass
     return df_radar, df_div
 
-# ========== 4. LAYOUT / UI ==========
+# ========== 4. INTERFACE (UI) ==========
 
 greeting, time_now = get_time_greeting()
 
@@ -360,20 +388,20 @@ st.markdown(f"""
     <div class='hero-container'>
         <h1 class='hero-title'>DINHEIRO DATA</h1>
         <div class='hero-subtitle'>
-            <div class='live-dot'></div>
-            {greeting} • MERCADO EM TEMPO REAL • {time_now}
+            <div class='live-indicator'></div>
+            {greeting}, INVESTIDOR • {time_now}
         </div>
     </div>
 """, unsafe_allow_html=True)
 
-# Navigation Cards (Glassmorphism)
+# Navigation Cards
 n1, n2, n3 = st.columns(3)
 with n1:
     st.markdown("""
     <a href='#panorama' class='glass-card'>
         <span class='card-icon'>🌍</span>
         <span class='card-title'>Panorama Global</span>
-        <span class='card-desc'>Índices, Moedas e Commodities</span>
+        <span class='card-desc'>Visão Macro em Tempo Real</span>
     </a>
     """, unsafe_allow_html=True)
 with n2:
@@ -381,7 +409,7 @@ with n2:
     <a href='#radar-bazin' class='glass-card'>
         <span class='card-icon'>🎯</span>
         <span class='card-title'>Radar Bazin</span>
-        <span class='card-desc'>Preço Teto & Margem de Segurança</span>
+        <span class='card-desc'>Análise de Preço Teto</span>
     </a>
     """, unsafe_allow_html=True)
 with n3:
@@ -389,7 +417,7 @@ with n3:
     <a href='#dividendos' class='glass-card'>
         <span class='card-icon'>💰</span>
         <span class='card-title'>Dividendos</span>
-        <span class='card-desc'>Projeções de Yield 2026</span>
+        <span class='card-desc'>Projeções de Yield</span>
     </a>
     """, unsafe_allow_html=True)
 
@@ -402,12 +430,12 @@ st.markdown("<div id='panorama'></div>", unsafe_allow_html=True)
 st.markdown("""
 <div class='section-box'>
     <div class='section-title'>Panorama Global</div>
-    <div class='section-meta'>// MONITORAMENTO DE ATIVOS</div>
+    <div class='section-badge'>LIVE DATA</div>
 </div>
 """, unsafe_allow_html=True)
 
 def render_market_table(col, title, df):
-    col.markdown(f"<div style='margin-bottom:10px; font-weight:700; color:#fff;'>{title}</div>", unsafe_allow_html=True)
+    col.markdown(f"<div style='margin-bottom:12px; font-weight:700; color:#fff; letter-spacing:1px; font-size:0.9rem;'>{title}</div>", unsafe_allow_html=True)
     if not df.empty:
         # Styles
         def color_var(val):
@@ -447,20 +475,16 @@ count_bazin = len(df_radar[df_radar['MARGEM_VAL'] > 10]) if not df_radar.empty e
 
 st.markdown(f"""
 <div class='section-box'>
-    <div style='display:flex; justify-content:space-between; align-items:center;'>
-        <div class='section-title'>Radar Bazin</div>
-        <div style='background:#064e3b; color:#00ff9d; padding:5px 15px; border-radius:20px; font-size:0.8rem; font-weight:700;'>
-            {count_bazin} OPORTUNIDADES (>10%)
-        </div>
-    </div>
-    <div style='margin-top:10px; color:#888; font-size:0.9rem;'>
-        O Preço Teto é calculado utilizando a metodologia de Décio Bazin (adaptado à nossa visão), visando identificar ativos que pagam bons dividendos a preços descontados.
-    </div>
+    <div class='section-title'>Radar Bazin</div>
+    <div class='section-badge'>{count_bazin} OPORTUNIDADES (>10%)</div>
+</div>
+<div style='margin-left:24px; margin-bottom:20px; color:#666; font-size:0.85rem; max-width:800px;'>
+    O Preço Teto é calculado utilizando a metodologia de Décio Bazin (adaptado à nossa visão), visando identificar ativos que pagam bons dividendos a preços descontados.
 </div>
 """, unsafe_allow_html=True)
 
 if not df_radar.empty:
-    search1 = st.text_input("", placeholder="🔍 Ex: BB Seguridade (Bazin)...", key="s1")
+    search1 = st.text_input("", placeholder="🔍 Ex: BB Seguridade...", key="s1")
     
     data_show = df_radar.copy()
     if search1:
@@ -493,20 +517,16 @@ count_div = len(df_div[df_div['DY_F'] > 8]) if not df_div.empty else 0
 
 st.markdown(f"""
 <div class='section-box'>
-    <div style='display:flex; justify-content:space-between; align-items:center;'>
-        <div class='section-title'>Dividendos</div>
-        <div style='background:#064e3b; color:#00ff9d; padding:5px 15px; border-radius:20px; font-size:0.8rem; font-weight:700;'>
-            {count_div} ATIVOS PAGADORES (>8%)
-        </div>
-    </div>
-    <div style='margin-top:10px; color:#888; font-size:0.9rem;'>
-        Estimativas de rendimento anual (Dividend Yield) para o exercício de 2026, baseadas em projeções de mercado e histórico de pagamentos.
-    </div>
+    <div class='section-title'>Dividendos</div>
+    <div class='section-badge'>{count_div} ATIVOS PAGADORES (>8%)</div>
+</div>
+<div style='margin-left:24px; margin-bottom:20px; color:#666; font-size:0.85rem; max-width:800px;'>
+    Estimativas de rendimento anual (Dividend Yield) para o exercício de 2026, baseadas em projeções de mercado e histórico de pagamentos.
 </div>
 """, unsafe_allow_html=True)
 
 if not df_div.empty:
-    search2 = st.text_input("", placeholder="🔍 Ex: BB Seguridade (Dividendos)...", key="s2")
+    search2 = st.text_input("", placeholder="🔍 Ex: BB Seguridade...", key="s2")
     
     div_show = df_div.copy()
     if search2:
@@ -534,7 +554,8 @@ if not df_div.empty:
 st.markdown("""
 <div class='legal-footer'>
     <strong>⚠️ ISENÇÃO DE RESPONSABILIDADE</strong><br><br>
-    Este dashboard tem caráter estritamente educativo e informativo. Nenhuma informação aqui apresentada constitui recomendação de compra ou venda de ativos.
-    Os dados são obtidos de fontes públicas e podem conter atrasos.
+    As informações, dados e indicadores apresentados nesta plataforma são obtidos de fontes públicas e cálculos automatizados. Este dashboard tem caráter estritamente educativo e informativo.<br>
+    <strong>Nenhum conteúdo aqui deve ser interpretado como recomendação de compra, venda ou manutenção de ativos mobiliários.</strong><br>
+    Investimentos em renda variável estão sujeitos a riscos de mercado e perda de capital. Realize sua própria análise ou consulte um profissional certificado antes de tomar decisões financeiras.
 </div>
 """, unsafe_allow_html=True)
