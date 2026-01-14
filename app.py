@@ -3,54 +3,89 @@ import pandas as pd
 import yfinance as yf
 import os
 
-# --- CONFIGURAÇÃO DA PÁGINA ---
+# --- 1. CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(
     page_title="Dinheiro Data",
-    page_icon="💸",
+    page_icon="🦅",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# --- CSS PRO (SIMETRIA E DESIGN) ---
+# --- 2. CSS DARK MODE PROFISSIONAL ---
 st.markdown("""
     <style>
-        .stApp {background-color: #f8fafc;}
-        h1, h2, h3, p, div, span {font-family: 'Segoe UI', sans-serif; color: #1e293b !important;}
-        
-        /* CARD PADRÃO DE MERCADO */
-        .market-card {
-            background-color: white;
-            padding: 15px;
-            border-radius: 10px;
-            border: 1px solid #e2e8f0;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-            text-align: center;
-            margin-bottom: 10px;
+        /* Força Fundo Escuro (Dark Mode) */
+        .stApp {
+            background-color: #0e1117;
+            color: #fafafa;
         }
-        .market-label {
-            font-size: 0.85rem;
-            color: #64748b;
+        
+        /* Fontes */
+        h1, h2, h3, p, div, span, label {
+            font-family: 'Segoe UI', sans-serif;
+            color: #e0e0e0 !important;
+        }
+
+        /* CARD DE ÍNDICE (ESTILO INVESTIDOR10/STATUS INVEST) */
+        .index-card {
+            background-color: #1e2129; /* Cinza Chumbo */
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            border: 1px solid #2d333b;
+            text-align: center;
+            transition: transform 0.2s;
+        }
+        .index-card:hover {
+            transform: scale(1.02);
+            border-color: #4b5563;
+        }
+        .index-name {
+            font-size: 0.8rem;
+            color: #9ca3af !important;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        .index-price {
+            font-size: 1.4rem;
+            color: #ffffff !important;
+            font-weight: 700;
+        }
+        .index-delta-pos {
+            color: #4ade80 !important; /* Verde Neon */
+            font-size: 0.9rem;
             font-weight: 600;
         }
-        .market-value {
-            font-size: 1.5rem;
-            color: #0f172a;
-            font-weight: 700;
-            margin-top: 5px;
+        .index-delta-neg {
+            color: #f87171 !important; /* Vermelho Suave */
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        /* TABELAS (Pretas e Limpas) */
+        div[data-testid="stDataFrame"] {
+            background-color: #1e2129;
+            border: 1px solid #2d333b;
+            border-radius: 8px;
         }
         
-        /* Tabelas */
-        div[data-testid="stDataFrame"] {
-            background-color: white;
-            border-radius: 8px;
-            border: 1px solid #e2e8f0;
+        /* Ajuste do Header da Tabela */
+        div[data-testid="stDataFrame"] div[role="columnheader"] {
+            background-color: #262730;
+            color: white;
+            font-weight: bold;
+        }
+        
+        /* Upload Area */
+        section[data-testid="stSidebar"] {
+            background-color: #161920;
+            border-right: 1px solid #2d333b;
         }
     </style>
 """, unsafe_allow_html=True)
 
-# --- FUNÇÕES ---
+# --- 3. FUNÇÕES DE DADOS ---
 
 def clean_currency(x):
     if isinstance(x, (int, float)): return float(x)
@@ -60,50 +95,65 @@ def clean_currency(x):
         except: return 0.0
     return 0.0
 
-def make_avatar(name):
-    if not isinstance(name, str): return ""
-    initials = name[:2].upper()
-    return f"https://ui-avatars.com/api/?name={initials}&background=0f172a&color=fff&size=64&font-size=0.5&rounded=true&bold=true"
+def get_logo_url(ticker):
+    """Busca logo real. Se falhar, o Streamlit mostra um ícone quebrado discreto."""
+    if not isinstance(ticker, str): return ""
+    clean = ticker.replace('.SA', '').strip().upper()
+    
+    # 1. Tenta repositório brasileiro (Fintz)
+    return f"https://raw.githubusercontent.com/thefintz/icon-project/master/stock_logos/{clean}.png"
 
-@st.cache_data(ttl=60) # Atualiza a cada 60 segundos
-def get_market_data():
-    """Busca dados robustos do Yahoo Finance"""
-    # Lista de Tickers
+@st.cache_data(ttl=60)
+def get_detailed_market_data():
+    """Busca Preço, Variação R$ e Variação %"""
     tickers_map = {
+        # BRASIL
         'IBOV': '^BVSP',
-        'DOLAR': 'BRL=X',
-        'SP500': '^GSPC',
+        'IFIX': 'IFIX.SA', # Tentativa direta, as vezes Yahoo falha no IFIX
+        'DÓLAR': 'BRL=X',
+        # EUA
+        'S&P 500': '^GSPC',
         'NASDAQ': '^IXIC',
         'VIX': '^VIX',
+        # CRIPTO
         'BITCOIN': 'BTC-USD',
         'ETHEREUM': 'ETH-USD',
         'SOLANA': 'SOL-USD'
     }
     
-    live_data = {}
+    results = {}
+    
+    # Faz download de 2 dias para calcular variação
     try:
-        # Pega o último preço de fechamento ou preço atual
-        for key, ticker in tickers_map.items():
-            ticker_obj = yf.Ticker(ticker)
-            hist = ticker_obj.history(period="1d")
-            if not hist.empty:
-                val = hist['Close'].iloc[-1]
-                live_data[key] = val
-            else:
-                live_data[key] = 0.0
+        data = yf.download(list(tickers_map.values()), period="5d", progress=False)['Close']
+        
+        for name, symbol in tickers_map.items():
+            try:
+                if symbol in data.columns:
+                    series = data[symbol].dropna()
+                    current = series.iloc[-1]
+                    prev = series.iloc[-2]
+                    
+                    delta = current - prev
+                    pct = (delta / prev) * 100
+                    
+                    results[name] = {'price': current, 'delta': delta, 'pct': pct}
+                else:
+                    results[name] = {'price': 0, 'delta': 0, 'pct': 0}
+            except:
+                results[name] = {'price': 0, 'delta': 0, 'pct': 0}
     except:
         pass
-    return live_data
+        
+    return results
 
 @st.cache_data(ttl=300)
 def get_br_prices(ticker_list):
-    """Preços de Ações BR"""
     if not ticker_list: return {}
     sa_tickers = [f"{t}.SA" for t in ticker_list]
     prices = {}
     try:
         data = yf.download(sa_tickers, period="1d", progress=False)['Close'].iloc[-1]
-        # Se for apenas 1 ativo, o pandas retorna float, se for varios, retorna Series
         if isinstance(data, float):
              prices[ticker_list[0]] = data
         else:
@@ -115,66 +165,81 @@ def get_br_prices(ticker_list):
         pass
     return prices
 
-# --- CARREGAMENTO DE DADOS (PERSISTÊNCIA) ---
-def load_excel():
-    # 1. Tenta carregar do Upload (Sidebar)
-    uploaded = st.sidebar.file_uploader("Atualizar Planilha (.xlsx)", type=['xlsx'])
-    if uploaded:
-        return pd.ExcelFile(uploaded)
-    
-    # 2. Se não tiver upload, tenta carregar o arquivo 'PEC.xlsx' do repositório
-    elif os.path.exists("PEC.xlsx"):
-        return pd.ExcelFile("PEC.xlsx")
-    
-    return None
-
-# --- APP START ---
+# --- 4. LAYOUT PRINCIPAL ---
 
 st.title("💸 Dinheiro Data")
 
-M = get_market_data()
+# --- CARDS DE MERCADO (HTML PURO PARA DESIGN PERFEITO) ---
+M = get_detailed_market_data()
 
-# --- 1. DADOS DE MERCADO (SIMÉTRICO) ---
-# Layout em 3 colunas iguais
-col_br, col_us, col_cr = st.columns(3)
+def render_market_card(name, prefix=""):
+    data = M.get(name, {'price': 0, 'delta': 0, 'pct': 0})
+    price = data['price']
+    delta = data['delta']
+    pct = data['pct']
+    
+    color_class = "index-delta-pos" if delta >= 0 else "index-delta-neg"
+    signal = "+" if delta >= 0 else ""
+    arrow = "▲" if delta >= 0 else "▼"
+    
+    # Formatação especial para evitar zeros
+    if price == 0:
+        price_fmt = "---"
+        delta_fmt = ""
+    else:
+        price_fmt = f"{prefix} {price:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        delta_fmt = f"{arrow} {pct:.2f}% ({signal}{delta:,.2f})"
 
-# Função para criar o Card HTML
-def display_card(label, value, prefix="", suffix=""):
-    val_fmt = f"{prefix} {value:,.2f} {suffix}".replace(",", "X").replace(".", ",").replace("X", ".")
     st.markdown(f"""
-        <div class="market-card">
-            <div class="market-label">{label}</div>
-            <div class="market-value">{val_fmt}</div>
+        <div class="index-card">
+            <div class="index-name">{name}</div>
+            <div class="index-price">{price_fmt}</div>
+            <div class="{color_class}">{delta_fmt}</div>
         </div>
     """, unsafe_allow_html=True)
 
-with col_br:
+# Layout Simétrico 3 Colunas
+c_br, c_us, c_cr = st.columns(3)
+
+with c_br:
     st.markdown("### 🇧🇷 Brasil")
-    display_card("IBOVESPA", M.get('IBOV', 0), "", "pts")
-    display_card("DÓLAR", M.get('DOLAR', 0), "R$")
+    render_market_card('IBOV', "")
+    render_market_card('DÓLAR', "R$")
 
-with col_us:
+with c_us:
     st.markdown("### 🇺🇸 Estados Unidos")
-    display_card("S&P 500", M.get('SP500', 0), "", "pts")
-    display_card("NASDAQ", M.get('NASDAQ', 0), "", "pts")
-    display_card("VIX (Medo)", M.get('VIX', 0), "", "")
+    render_market_card('S&P 500', "")
+    render_market_card('NASDAQ', "")
+    render_market_card('VIX', "")
 
-with col_cr:
+with c_cr:
     st.markdown("### ₿ Cripto")
-    display_card("BITCOIN", M.get('BITCOIN', 0), "US$")
-    display_card("ETHEREUM", M.get('ETHEREUM', 0), "US$")
-    display_card("SOLANA", M.get('SOLANA', 0), "US$")
+    render_market_card('BITCOIN', "US$")
+    render_market_card('ETHEREUM', "US$")
+    render_market_card('SOLANA', "US$")
 
 st.divider()
 
-# --- PROCESSAMENTO DA PLANILHA ---
-xls = load_excel()
+# --- 5. LÓGICA DE DADOS DA PLANILHA ---
 
+# Tenta carregar arquivo persistente ou upload
+def load_data():
+    # 1. Upload manual (Prioridade)
+    uploaded = st.sidebar.file_uploader("📂 Atualizar Dados (.xlsx)", type=['xlsx'])
+    if uploaded: return pd.ExcelFile(uploaded)
+    
+    # 2. Arquivo no Servidor (GitHub)
+    if os.path.exists("PEC.xlsx"):
+        return pd.ExcelFile("PEC.xlsx")
+        
+    return None
+
+xls = load_data()
 df_radar = pd.DataFrame()
 df_div = pd.DataFrame()
 
 if xls:
-    # Procura aba inteligente
+    # Acha aba inteligente
     target_sheet = None
     for sheet in xls.sheet_names:
         df_chk = pd.read_excel(xls, sheet).head(2)
@@ -188,7 +253,7 @@ if xls:
             df_main = pd.read_excel(xls, target_sheet).fillna(0)
             cols = df_main.columns
             
-            # Mapeia colunas
+            # Mapeamento
             c_tick = [c for c in cols if 'TICKER' in c.upper()][0]
             c_emp = [c for c in cols if 'EMPRESA' in c.upper()][0]
             c_bazin = [c for c in cols if 'BAZIN' in c.upper()][0]
@@ -199,7 +264,7 @@ if xls:
             df_main['BAZIN_NUM'] = df_main[c_bazin].apply(clean_currency)
             df_main['DY_NUM'] = df_main[c_dy].apply(clean_currency)
             
-            # Busca Preço Online
+            # Preço Online
             tickers_list = df_main['TICKER_CLEAN'].unique().tolist()
             live_prices = get_br_prices(tickers_list)
             df_main['PRECO_LIVE'] = df_main['TICKER_CLEAN'].map(live_prices).fillna(0)
@@ -210,52 +275,56 @@ if xls:
                 axis=1
             )
             
-            # Visual
-            df_main['LOGO'] = df_main['TICKER_CLEAN'].apply(make_avatar)
-            df_main['NOME_FINAL'] = df_main[c_emp] + " (" + df_main['TICKER_CLEAN'] + ")"
+            # Visual (Logo Real + Nome)
+            df_main['LOGO'] = df_main['TICKER_CLEAN'].apply(get_logo_url)
+            df_main['ATIVO_DISPLAY'] = df_main[c_emp] + " (" + df_main['TICKER_CLEAN'] + ")"
             
-            # Dataframes Finais
-            df_radar = df_main[df_main['BAZIN_NUM'] > 0][['LOGO', 'NOME_FINAL', 'BAZIN_NUM', 'PRECO_LIVE', 'MARGEM']].sort_values('MARGEM', ascending=False)
-            df_div = df_main[df_main['DY_NUM'] > 0][['LOGO', 'NOME_FINAL', 'DY_NUM']].sort_values('DY_NUM', ascending=False)
+            # Filtros
+            df_radar = df_main[df_main['BAZIN_NUM'] > 0][['LOGO', 'ATIVO_DISPLAY', 'BAZIN_NUM', 'PRECO_LIVE', 'MARGEM']].copy()
+            df_radar = df_radar.sort_values('MARGEM', ascending=False)
             
-        except:
-            st.error("Erro ao processar estrutura da planilha.")
+            df_div = df_main[df_main['DY_NUM'] > 0][['LOGO', 'ATIVO_DISPLAY', 'DY_NUM']].copy()
+            df_div = df_div.sort_values('DY_NUM', ascending=False)
+            
+        except Exception as e:
+            st.error(f"Erro ao ler planilha: {e}")
 
-# --- 2. PREÇO TETO ---
-st.subheader("🎯 Preço-Teto (Valuation)")
+# --- 6. TABELA: PREÇO TETO (BAZIN) ---
+st.subheader("🎯 Radar de Preço-Teto")
 
-if xls and not df_radar.empty:
+if not df_radar.empty:
     st.dataframe(
         df_radar,
         column_config={
-            "LOGO": st.column_config.ImageColumn("", width="small"),
-            "NOME_FINAL": st.column_config.TextColumn("Ativo"),
-            "BAZIN_NUM": st.column_config.NumberColumn("Preço Teto", format="R$ %.2f"),
-            "PRECO_LIVE": st.column_config.NumberColumn("Cotação Atual", format="R$ %.2f"),
+            "LOGO": st.column_config.ImageColumn("Log", width="small"), # Pequeno para logo
+            "ATIVO_DISPLAY": st.column_config.TextColumn("Ativo", width="medium"), # Médio para nome
+            "BAZIN_NUM": st.column_config.NumberColumn("Teto Bazin", format="R$ %.2f", width="small"),
+            "PRECO_LIVE": st.column_config.NumberColumn("Cotação", format="R$ %.2f", width="small"),
             "MARGEM": st.column_config.ProgressColumn(
                 "Margem Segurança", 
                 format="%.1f%%", 
-                min_value=-50, max_value=50
+                min_value=-50, max_value=50,
+                width="large" # Grande para a barra
             )
         },
         hide_index=True,
         use_container_width=True
     )
-elif not xls:
-    st.info("⚠️ Nenhuma planilha encontrada. Faça upload de 'PEC.xlsx' no GitHub ou arraste no menu lateral.")
+else:
+    st.info("Aguardando dados... Se o arquivo já estiver no GitHub, recarregue a página.")
 
 st.divider()
 
-# --- 3. DIVIDENDOS ---
+# --- 7. TABELA: DIVIDENDOS ---
 st.subheader("💰 Dividendos Projetados")
 
-if xls and not df_div.empty:
+if not df_div.empty:
     st.dataframe(
         df_div,
         column_config={
-            "LOGO": st.column_config.ImageColumn("", width="small"),
-            "NOME_FINAL": "Ativo",
-            "DY_NUM": st.column_config.NumberColumn("DY Projetado", format="%.2f %%"),
+            "LOGO": st.column_config.ImageColumn("Log", width="small"),
+            "ATIVO_DISPLAY": st.column_config.TextColumn("Ativo", width="large"),
+            "DY_NUM": st.column_config.NumberColumn("DY Projetado", format="%.2f %%", width="medium"),
         },
         hide_index=True,
         use_container_width=True
