@@ -76,51 +76,43 @@ def clean_currency(x):
     return 0.0
 
 def clean_dy_percentage(x):
-    """
-    Limpa DY e corrige erro de escala (0.11 -> 11.0)
-    """
+    """Corrigi DY decimal (0.11 -> 11.0)"""
     val = clean_currency(x)
-    # Lógica de correção: Se o DY for menor que 1.0 (ex: 0.15), 
-    # provavelmente é um decimal (15%) e não 0.15%. 
-    # Dividend Yields anuais geralmente são > 2%.
     if val > 0 and val < 1.0:
         return val * 100
     return val
 
 def get_logo_url(ticker):
+    """Busca logos de Fontes Diferentes"""
     if not isinstance(ticker, str): return ""
     clean = ticker.replace('.SA', '').strip().upper()
+    
+    # Se for Cripto famosa, usa CoinGecko
+    if clean in ['BTC', 'BITCOIN']: return "https://assets.coingecko.com/coins/images/1/small/bitcoin.png"
+    if clean in ['ETH', 'ETHEREUM']: return "https://assets.coingecko.com/coins/images/279/small/ethereum.png"
+    if clean in ['SOL', 'SOLANA']: return "https://assets.coingecko.com/coins/images/4128/small/solana.png"
+    
+    # Ações B3 (Repositório Fintz é o mais completo)
     return f"https://raw.githubusercontent.com/thefintz/icon-project/master/stock_logos/{clean}.png"
 
 @st.cache_data(ttl=60)
 def get_full_market_data():
-    """
-    Retorna 3 listas com EXATAMENTE 6 itens cada para simetria.
-    """
+    """Retorna 3 listas com EXATAMENTE 6 itens cada."""
     lists = {
         'INDICES_MOEDAS': {
-            'IBOVESPA': '^BVSP',
-            'IFIX (FIIs)': 'IFIX.SA', # As vezes falha no Yahoo, mas mantemos o slot
-            'S&P 500': '^GSPC',
-            'NASDAQ': '^IXIC',
-            'DÓLAR': 'BRL=X',
-            'EURO': 'EURBRL=X'
+            'IBOVESPA': '^BVSP', 'IFIX (FIIs)': 'IFIX.SA',
+            'S&P 500': '^GSPC', 'NASDAQ': '^IXIC',
+            'DÓLAR': 'BRL=X', 'EURO': 'EURBRL=X'
         },
         'CRIPTO_COMMODITIES': {
-            'BITCOIN': 'BTC-USD',
-            'ETHEREUM': 'ETH-USD',
-            'SOLANA': 'SOL-USD',
-            'OURO': 'GC=F',
-            'PETRÓLEO': 'BZ=F',
-            'PRATA': 'SI=F'
+            'BITCOIN': 'BTC-USD', 'ETHEREUM': 'ETH-USD',
+            'SOLANA': 'SOL-USD', 'OURO': 'GC=F',
+            'PETRÓLEO': 'BZ=F', 'PRATA': 'SI=F'
         },
         'TOP_BRASIL': {
-            'VALE': 'VALE3.SA',
-            'PETROBRAS': 'PETR4.SA',
-            'ITAU': 'ITUB4.SA',
-            'BANCO BRASIL': 'BBAS3.SA',
-            'WEG': 'WEGE3.SA',
-            'AMBEV': 'ABEV3.SA'
+            'VALE': 'VALE3.SA', 'PETROBRAS': 'PETR4.SA',
+            'ITAU': 'ITUB4.SA', 'BANCO BRASIL': 'BBAS3.SA',
+            'WEG': 'WEGE3.SA', 'AMBEV': 'ABEV3.SA'
         }
     }
     
@@ -147,7 +139,6 @@ def get_full_market_data():
                 rows.append({"Nome": name, "Preço": price, "Var %": pct, "Var R$": delta})
         except: pass
         
-        # Garante que, se falhar algo, a lista não quebre o layout (Preenche vazio)
         while len(rows) < 6:
             rows.append({"Nome": "-", "Preço": 0, "Var %": 0, "Var R$": 0})
             
@@ -174,10 +165,9 @@ def get_br_prices(ticker_list):
 st.title("💸 Dinheiro Data")
 st.markdown("---")
 
-# Coletar dados
 M = get_full_market_data()
 
-# --- SEÇÃO 1: PANORAMA (3 COLUNAS x 6 LINHAS) ---
+# --- SEÇÃO 1: PANORAMA (3 COLUNAS) ---
 st.subheader("🌍 Panorama de Mercado")
 col1, col2, col3 = st.columns(3)
 
@@ -245,7 +235,7 @@ if file_data is not None:
                 target_df['TICKER_F'] = target_df[col_ticker].astype(str).str.strip().str.upper()
                 target_df['BAZIN_F'] = target_df[col_bazin].apply(clean_currency)
                 
-                # CORREÇÃO DO DY AQUI
+                # CORREÇÃO DY
                 if col_dy: target_df['DY_F'] = target_df[col_dy].apply(clean_dy_percentage)
                 else: target_df['DY_F'] = 0.0
                 
@@ -264,34 +254,33 @@ if file_data is not None:
                 target_df['LOGO_F'] = target_df['TICKER_F'].apply(get_logo_url)
                 target_df['NOME_F'] = target_df[col_empresa] if col_empresa else target_df['TICKER_F']
 
-                # Tabela 1: Valuation
                 df_radar = target_df[target_df['BAZIN_F'] > 0].copy()
                 df_radar = df_radar[['LOGO_F', 'NOME_F', 'BAZIN_F', 'PRECO_F', 'MARGEM_F']]
                 df_radar = df_radar.sort_values('MARGEM_F', ascending=False)
                 
-                # Tabela 2: Dividendos
                 df_div = target_df[target_df['DY_F'] > 0].copy()
                 df_div = df_div[['LOGO_F', 'NOME_F', 'DPA_F', 'DY_F']]
                 df_div = df_div.sort_values('DY_F', ascending=False)
     except Exception as e:
         st.error(f"Erro ao ler arquivo: {e}")
 
-# --- 6. VISUALIZAÇÃO DO RADAR ---
+# --- 6. RADAR BAZIN ---
 st.subheader("🎯 Radar de Preço Justo (Bazin)")
 
 if not df_radar.empty:
     st.dataframe(
         df_radar,
         column_config={
-            "LOGO_F": st.column_config.ImageColumn("Logo", width="small"),
-            "NOME_F": st.column_config.TextColumn("Ativo", width="medium"),
-            "BAZIN_F": st.column_config.NumberColumn("Preço Justo (Teto)", format="R$ %.2f"),
-            "PRECO_F": st.column_config.NumberColumn("Cotação Atual", format="R$ %.2f"),
+            "LOGO_F": st.column_config.ImageColumn("Logo", width="small"), # Alinhamento removido (Correção erro)
+            "NOME_F": st.column_config.TextColumn("Ativo", width="medium", alignment="center"),
+            "BAZIN_F": st.column_config.NumberColumn("Preço Justo (Teto)", format="R$ %.2f", alignment="center"),
+            "PRECO_F": st.column_config.NumberColumn("Cotação Atual", format="R$ %.2f", alignment="center"),
             "MARGEM_F": st.column_config.ProgressColumn(
                 "Margem de Segurança",
                 format="%.1f%%",
                 min_value=-50, max_value=50,
-                width="medium"
+                width="medium",
+                alignment="center"
             )
         },
         hide_index=True,
@@ -302,17 +291,17 @@ else:
 
 st.divider()
 
-# --- 7. VISUALIZAÇÃO DE DIVIDENDOS ---
+# --- 7. DIVIDENDOS ---
 st.subheader("💰 Projeção de Renda Passiva")
 
 if not df_div.empty:
     st.dataframe(
         df_div,
         column_config={
-            "LOGO_F": st.column_config.ImageColumn("Logo", width="small"),
-            "NOME_F": st.column_config.TextColumn("Ativo", width="medium"),
-            "DPA_F": st.column_config.NumberColumn("Dividendo por Ação", format="R$ %.2f"),
-            "DY_F": st.column_config.NumberColumn("Dividend Yield", format="%.2f %%"),
+            "LOGO_F": st.column_config.ImageColumn("Logo", width="small"), # Alinhamento removido (Correção erro)
+            "NOME_F": st.column_config.TextColumn("Ativo", width="medium", alignment="center"),
+            "DPA_F": st.column_config.NumberColumn("Dividendo por Ação", format="R$ %.2f", alignment="center"),
+            "DY_F": st.column_config.NumberColumn("Dividend Yield", format="%.2f %%", alignment="center"),
         },
         hide_index=True,
         use_container_width=True
