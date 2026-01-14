@@ -88,7 +88,7 @@ def get_logo_url(ticker):
     if not isinstance(ticker, str): return ""
     clean = ticker.replace('.SA', '').strip().upper()
     
-    # --- SUA LISTA DE DOMÍNIOS (ATUALIZADA COM IRB) ---
+    # --- SUA LISTA DE DOMÍNIOS (IRB ATUALIZADO) ---
     meus_sites = {
         'CXSE3': 'caixaseguradora.com.br',
         'BBSE3': 'bbseguros.com.br',
@@ -105,7 +105,7 @@ def get_logo_url(ticker):
         'RANI3': 'irani.com.br',
         'KLBN11': 'klabin.com.br',
         'KLBN4': 'klabin.com.br',
-        'IRBR3': 'www.irbre.com', # ATUALIZADO AQUI
+        'IRBR3': 'ri.irbre.com', # <--- ATUALIZADO AQUI
         'FLRY3': 'fleury.com.br',
         'PSSA3': 'portoseguro.com.br'
     }
