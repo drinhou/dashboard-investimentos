@@ -5,7 +5,7 @@ import os
 import datetime
 import pytz
 
-# --- 1. CONFIGURAÇÃO (WIDE & DARK) ---
+# --- 1. CONFIGURAÇÃO (WIDE & DARK - SEM SIDEBAR) ---
 st.set_page_config(
     page_title="Dinheiro Data",
     page_icon="📊",
@@ -13,7 +13,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# --- 2. CSS DE ALTA PRECISÃO (VERDE, CENTRALIZAÇÃO & CORREÇÃO DE LINKS) ---
+# --- 2. CSS DE ALTA PRECISÃO (VERDE, CENTRALIZAÇÃO & REMOÇÃO DE ELEMENTOS PADRÃO) ---
 st.markdown("""
     <style>
         /* SCROLL SUAVE */
@@ -22,6 +22,11 @@ st.markdown("""
         /* Fundo e Fonte */
         .stApp { background-color: #0c120f; color: #e0e0e0; }
         * { font-family: 'Segoe UI', 'Roboto', sans-serif; }
+        
+        /* Ocultar Menu Hambúrguer e Footer Padrão do Streamlit */
+        #MainMenu {visibility: hidden;}
+        footer {visibility: hidden;}
+        header {visibility: hidden;}
         
         /* HEADER PRINCIPAL */
         .main-header {
@@ -47,7 +52,7 @@ st.markdown("""
             margin-top: 5px;
         }
 
-        /* --- CORREÇÃO DO AZUL NOS BOTÕES DE NAVEGAÇÃO --- */
+        /* BOTÕES DE NAVEGAÇÃO */
         .nav-card {
             background-color: #111a16;
             border: 1px solid #1f2937;
@@ -55,45 +60,27 @@ st.markdown("""
             padding: 20px;
             text-align: center;
             cursor: pointer;
-            text-decoration: none !important; /* Remove sublinhado */
+            text-decoration: none !important;
             display: block;
             margin-bottom: 20px;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        /* Força a cor dos textos dentro do link para não ficar azul */
-        .nav-card span, .nav-card div {
-            text-decoration: none !important;
-        }
-        .nav-title { 
-            font-weight: 700; 
-            font-size: 1.1rem; 
-            display: block; 
-            color: #e5e7eb !important; /* Força Branco */
-        }
-        .nav-desc { 
-            font-size: 0.8rem; 
-            color: #6b7280 !important; /* Força Cinza */
-            display: block; 
-            margin-top: 5px; 
-        }
+        .nav-card span, .nav-card div { text-decoration: none !important; }
+        .nav-title { font-weight: 700; font-size: 1.1rem; display: block; color: #e5e7eb !important; }
+        .nav-desc { font-size: 0.8rem; color: #6b7280 !important; display: block; margin-top: 5px; }
         .nav-card:hover {
             border-color: #10b981;
             transform: translateY(-3px);
             box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.1);
         }
-        .nav-card:hover .nav-title {
-            color: #10b981 !important; /* Fica verde ao passar o mouse */
-        }
+        .nav-card:hover .nav-title { color: #10b981 !important; }
 
-        /* --- CENTRALIZAÇÃO TOTAL DAS TABELAS (FORÇA BRUTA) --- */
-        
+        /* --- CENTRALIZAÇÃO TOTAL DAS TABELAS --- */
         div[data-testid="stDataFrame"] {
             border: 1px solid #1f2937;
             border-radius: 10px;
             background-color: #0c120f;
         }
-        
-        /* Cabeçalhos: Centralizados */
         div[data-testid="stDataFrame"] div[role="columnheader"] {
             background-color: #141f1b;
             color: #6ee7b7;
@@ -105,9 +92,6 @@ st.markdown("""
             justify-content: center !important;
             display: flex;
         }
-        
-        /* Células: Centralizadas Horizontal e Verticalmente */
-        /* O seletor > div força o alinhamento do conteúdo interno que o Streamlit gera */
         div[data-testid="stDataFrame"] div[role="gridcell"] > div {
             display: flex;
             justify-content: center !important;
@@ -122,8 +106,6 @@ st.markdown("""
             align-items: center !important;
             background-color: #0c120f;
         }
-        
-        /* Logos: Centralizadas */
         div[data-testid="stDataFrame"] div[role="gridcell"] img {
             border-radius: 50%;
             border: 1px solid #374151;
@@ -132,13 +114,12 @@ st.markdown("""
             width: 30px;
             height: 30px;
             object-fit: contain;
+            display: block;
+            margin: 0 auto;
         }
 
         /* TÍTULOS DE SEÇÃO */
-        .section-wrapper {
-            margin-top: 60px;
-            margin-bottom: 20px;
-        }
+        .section-wrapper { margin-top: 60px; margin-bottom: 20px; }
         .section-header {
             font-size: 1.6rem;
             font-weight: 700;
@@ -288,7 +269,7 @@ st.markdown(f"""
     </div>
 """, unsafe_allow_html=True)
 
-# NAVEGAÇÃO (LINK ANCHORS SEM COR AZUL)
+# NAVEGAÇÃO
 nav1, nav2, nav3 = st.columns(3)
 with nav1:
     st.markdown("""
@@ -314,7 +295,7 @@ with nav3:
 
 M = get_market_data_distributed()
 
-# --- 1. PANORAMA GLOBAL ---
+# --- 1. PANORAMA ---
 st.markdown("<div id='panorama'></div>", unsafe_allow_html=True)
 st.markdown("""
 <div class='section-wrapper'>
@@ -344,7 +325,6 @@ def show_mini_table(col, title, df):
             use_container_width=True
         )
 
-# Layout Panorama
 r1c1, r1c2, r1c3 = st.columns(3)
 with r1c1: show_mini_table(r1c1, "🇺🇸 Índices EUA", M['USA'])
 with r1c2: show_mini_table(r1c2, "🇧🇷 Índices Brasil", M['BRASIL'])
@@ -357,13 +337,12 @@ with r2c1: show_mini_table(r2c1, "🛢️ Commodities", M['COMMODITIES'])
 with r2c2: show_mini_table(r2c2, "💎 Criptoativos", M['CRIPTO'])
 
 
-# --- CARGA DADOS ---
+# --- CARGA DADOS (AUTO) ---
 df_radar, df_div = pd.DataFrame(), pd.DataFrame()
-uploaded = st.sidebar.file_uploader("📂 Importar Dados", type=['xlsx', 'csv'])
 file_data = None
 
-if uploaded: file_data = pd.read_csv(uploaded) if uploaded.name.endswith('.csv') else pd.ExcelFile(uploaded)
-elif os.path.exists("PEC.xlsx"): file_data = pd.ExcelFile("PEC.xlsx")
+# Busca arquivo local automaticamente
+if os.path.exists("PEC.xlsx"): file_data = pd.ExcelFile("PEC.xlsx")
 elif os.path.exists("PEC - Página1.csv"): file_data = pd.read_csv("PEC - Página1.csv")
 
 if file_data is not None:
