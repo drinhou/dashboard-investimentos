@@ -5,15 +5,15 @@ import os
 import datetime
 import pytz
 
-# --- 1. CONFIGURAÇÃO (WIDE & DARK) ---
+# --- 1. CONFIGURAÇÃO (WIDE & DARK - SEM ÍCONES) ---
 st.set_page_config(
     page_title="Dinheiro Data",
-    page_icon="💸",
+    page_icon="📊", # Ícone neutro de gráfico
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# --- 2. CSS PREMIUM (VERDE TOTAL & CENTRALIZAÇÃO) ---
+# --- 2. CSS DE ALTA PRECISÃO (VERDE & CENTRALIZAÇÃO) ---
 st.markdown("""
     <style>
         /* SCROLL SUAVE */
@@ -23,16 +23,16 @@ st.markdown("""
         .stApp { background-color: #0c120f; color: #e0e0e0; }
         * { font-family: 'Segoe UI', 'Roboto', sans-serif; }
         
-        /* HEADER CENTRALIZADO */
+        /* HEADER PRINCIPAL (SEM ÍCONES EXAGERADOS) */
         .main-header {
             text-align: center;
-            padding: 40px 0 20px 0;
+            padding: 40px 0 10px 0;
+            margin-bottom: 40px;
             border-bottom: 1px solid #1f2937;
-            margin-bottom: 30px;
             background: radial-gradient(circle at center, #132e25 0%, #0c120f 100%);
         }
         .main-title {
-            font-size: 3.5rem;
+            font-size: 3rem;
             font-weight: 800;
             background: -webkit-linear-gradient(45deg, #10b981, #34d399); /* Verde Degradê */
             -webkit-background-clip: text;
@@ -41,18 +41,18 @@ st.markdown("""
             letter-spacing: -1px;
         }
         .main-greeting {
-            font-size: 1.1rem;
+            font-size: 1rem;
             color: #9ca3af;
             font-weight: 400;
             margin-top: 5px;
         }
 
-        /* BOTÕES DE NAVEGAÇÃO */
+        /* BOTÕES DE NAVEGAÇÃO (VERDES) */
         .nav-card {
             background-color: #111a16;
             border: 1px solid #1f2937;
             border-radius: 12px;
-            padding: 18px;
+            padding: 20px;
             text-align: center;
             cursor: pointer;
             text-decoration: none;
@@ -66,29 +66,31 @@ st.markdown("""
             transform: translateY(-3px);
             box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.1);
         }
-        .nav-icon { font-size: 1.5rem; margin-bottom: 8px; display: block; }
-        .nav-title { font-weight: 700; font-size: 1rem; display: block; color: #e5e7eb; }
-        .nav-desc { font-size: 0.75rem; color: #6b7280; display: block; margin-top: 4px; }
+        .nav-title { font-weight: 700; font-size: 1.1rem; display: block; color: #e5e7eb; }
+        .nav-desc { font-size: 0.8rem; color: #6b7280; display: block; margin-top: 5px; }
 
-        /* --- TABELAS: CENTRALIZAÇÃO TOTAL (ESTILO EXCEL) --- */
+        /* --- CENTRALIZAÇÃO ABSOLUTA DAS TABELAS --- */
+        
         div[data-testid="stDataFrame"] {
             border: 1px solid #1f2937;
-            border-radius: 12px;
-            overflow: hidden;
+            border-radius: 10px;
+            background-color: #0c120f;
         }
-        /* Cabeçalho Centralizado */
+        
+        /* Cabeçalhos: Centralizados */
         div[data-testid="stDataFrame"] div[role="columnheader"] {
-            background-color: #141f1b;
-            color: #6ee7b7;
+            background-color: #141f1b; /* Verde muito escuro */
+            color: #6ee7b7; /* Verde texto */
             font-size: 12px;
             font-weight: 700;
             text-transform: uppercase;
-            border-bottom: 2px solid #064e3b;
+            border-bottom: 1px solid #064e3b;
             text-align: center !important;
             justify-content: center !important;
             display: flex;
         }
-        /* Células Centralizadas (Horizontal e Vertical) */
+        
+        /* Células: Centralizadas Horizontal e Verticalmente */
         div[data-testid="stDataFrame"] div[role="gridcell"] {
             display: flex;
             justify-content: center !important;
@@ -96,57 +98,65 @@ st.markdown("""
             text-align: center !important;
             font-size: 13px;
             background-color: #0c120f;
-            height: 100%; /* Garante altura total */
+            height: 100%;
         }
         
-        /* LOGOS */
+        /* Logos: Centralizadas */
         div[data-testid="stDataFrame"] div[role="gridcell"] img {
             border-radius: 50%;
-            border: 2px solid #1f2937;
-            padding: 1px;
+            border: 1px solid #374151;
+            padding: 2px;
             background-color: #fff;
-            width: 28px;
-            height: 28px;
+            width: 30px;
+            height: 30px;
             display: block;
-            margin: auto; /* Garante centro da imagem */
+            margin: 0 auto;
         }
 
-        /* TÍTULOS DE SEÇÃO (RISCO VERDE) */
+        /* TÍTULOS DE SEÇÃO (VERDE) */
+        .section-wrapper {
+            margin-top: 60px;
+            margin-bottom: 20px;
+        }
         .section-header {
-            font-size: 1.4rem;
+            font-size: 1.6rem;
             font-weight: 700;
             color: #f3f4f6;
-            margin-top: 50px;
-            margin-bottom: 20px;
-            border-left: 5px solid #10b981; /* CORRIGIDO PARA VERDE */
-            padding-left: 20px;
+            border-left: 6px solid #10b981; /* Verde Puro */
+            padding-left: 15px;
             display: flex;
             align-items: center;
             justify-content: space-between;
         }
+        .section-desc {
+            font-size: 0.9rem;
+            color: #9ca3af;
+            margin-top: 5px;
+            margin-left: 21px; /* Alinhado com o texto do título */
+            max-width: 800px;
+        }
         
-        /* BADGES */
+        /* BADGES (ETIQUETAS VERDES) */
         .status-badge {
             background-color: #064e3b;
             color: #34d399;
-            font-size: 0.75rem;
-            padding: 4px 10px;
+            font-size: 0.8rem;
+            padding: 5px 12px;
             border-radius: 99px;
             border: 1px solid #059669;
             font-weight: 600;
             letter-spacing: 0.5px;
         }
         
-        /* DISCLAIMER FOOTER */
+        /* FOOTER */
         .footer-disclaimer {
-            margin-top: 80px;
-            padding: 30px;
+            margin-top: 100px;
+            padding: 40px;
             border-top: 1px solid #1f2937;
             text-align: center;
-            color: #6b7280;
+            color: #4b5563;
             font-size: 0.8rem;
-            background-color: #111a16;
-            border-radius: 12px;
+            background-color: #0c120f;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -219,7 +229,7 @@ def get_market_data_distributed():
                         series = data[ticker].dropna()
                     elif isinstance(data, pd.Series):
                         series = data.dropna()
-                        
+                    
                     if len(series) >= 2:
                         curr, prev = series.iloc[-1], series.iloc[-2]
                         pct = ((curr - prev) / prev) * 100
@@ -244,47 +254,45 @@ def get_br_prices(ticker_list):
         return prices
     except: return {}
 
-# --- 4. LAYOUT PRINCIPAL ---
+# --- 4. APP PRINCIPAL ---
 
 greeting_text, time_text = get_time_greeting()
 
-# Header
+# HEADER LIMPO
 st.markdown(f"""
     <div class='main-header'>
-        <h1 class='main-title'>💸 Dinheiro Data</h1>
-        <p class='main-greeting'>🦅 {greeting_text}, Investidor. <span style='font-size: 0.8em; opacity: 0.7;'>| Dados: {time_text}</span></p>
+        <h1 class='main-title'>Dinheiro Data</h1>
+        <p class='main-greeting'>{greeting_text}, Investidor. <span style='font-size: 0.8em; opacity: 0.6;'>| Dados: {time_text}</span></p>
     </div>
 """, unsafe_allow_html=True)
 
-# Navegação
+# NAVEGAÇÃO
 nav1, nav2, nav3 = st.columns(3)
 with nav1:
     st.markdown("""<a href='#panorama' class='nav-card'>
-        <span class='nav-icon'>🌍</span>
-        <span class='nav-title'>Panorama Global</span>
-        <span class='nav-desc'>Visão Macro em Tempo Real</span>
+        <span class='nav-title'>🌍 Panorama Global</span>
+        <span class='nav-desc'>Visão Macro</span>
     </a>""", unsafe_allow_html=True)
 with nav2:
     st.markdown("""<a href='#radar-bazin' class='nav-card'>
-        <span class='nav-icon'>🎯</span>
-        <span class='nav-title'>Radar Bazin</span>
+        <span class='nav-title'>🎯 Radar Bazin</span>
         <span class='nav-desc'>Análise de Preço Teto</span>
     </a>""", unsafe_allow_html=True)
 with nav3:
     st.markdown("""<a href='#dividendos' class='nav-card'>
-        <span class='nav-icon'>💰</span>
-        <span class='nav-title'>Dividendos</span>
-        <span class='nav-desc'>Projeção de Renda Futura</span>
+        <span class='nav-title'>💰 Dividendos</span>
+        <span class='nav-desc'>Projeção de Renda</span>
     </a>""", unsafe_allow_html=True)
 
 M = get_market_data_distributed()
 
-# --- 1. PANORAMA ---
+# --- 1. PANORAMA DE MERCADO ---
 st.markdown("<div id='panorama'></div>", unsafe_allow_html=True)
 st.markdown("""
-<div class='section-header'>
-    <span>🌍 Panorama de Mercado</span>
-    <span class='status-badge'>🟢 ONLINE</span>
+<div class='section-wrapper'>
+    <div class='section-header'>
+        <span>🌍 Panorama de Mercado</span>
+    </div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -321,7 +329,7 @@ with r2c1: show_mini_table(r2c1, "🛢️ Commodities", M['COMMODITIES'])
 with r2c2: show_mini_table(r2c2, "💎 Criptoativos", M['CRIPTO'])
 
 
-# --- CARGA DE DADOS ---
+# --- CARGA DADOS ---
 df_radar, df_div = pd.DataFrame(), pd.DataFrame()
 uploaded = st.sidebar.file_uploader("📂 Importar Dados", type=['xlsx', 'csv'])
 file_data = None
@@ -372,9 +380,14 @@ st.markdown("<div id='radar-bazin'></div>", unsafe_allow_html=True)
 count_opp = len(df_radar[df_radar['MARGEM_VAL'] > 10]) if not df_radar.empty else 0
 
 st.markdown(f"""
-<div class='section-header'>
-    <span>🎯 Radar de Preço Justo</span>
-    <span class='status-badge'>{count_opp} Oportunidades (>10%)</span>
+<div class='section-wrapper'>
+    <div class='section-header'>
+        <span>🎯 Radar de Preço Justo</span>
+        <span class='status-badge'>{count_opp} Ativos com desconto (>10%)</span>
+    </div>
+    <div class='section-desc'>
+        O Preço Teto é calculado utilizando a metodologia de Décio Bazin (Dividendo Médio / 6%), visando identificar ativos que pagam bons dividendos a preços descontados.
+    </div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -406,9 +419,14 @@ st.markdown("<div id='dividendos'></div>", unsafe_allow_html=True)
 count_dy = len(df_div[df_div['DY_F'] > 8]) if not df_div.empty else 0
 
 st.markdown(f"""
-<div class='section-header'>
-    <span>💰 Dividendos Projetados</span>
-    <span class='status-badge'>{count_dy} Ativos (>8%)</span>
+<div class='section-wrapper'>
+    <div class='section-header'>
+        <span>💰 Dividendos Projetados</span>
+        <span class='status-badge'>{count_dy} Ativos com Yield > 8%</span>
+    </div>
+    <div class='section-desc'>
+        Estimativas de rendimento anual (Dividend Yield) para o exercício de 2026, baseadas em projeções de mercado e histórico de pagamentos das companhias.
+    </div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -433,7 +451,7 @@ if not df_div.empty:
         use_container_width=True
     )
 
-# --- FOOTER: DISCLAIMER ---
+# --- FOOTER ---
 st.markdown("""
     <div class='footer-disclaimer'>
         <strong>⚠️ ISENÇÃO DE RESPONSABILIDADE</strong><br><br>
